@@ -1,105 +1,53 @@
-import { StatusBar } from 'expo-status-bar'
 import {
   ActivityIndicator,
-  SafeAreaView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native'
 
-import { API_URL } from './src/config'
-import useApi from './src/hooks/useApi'
+import { useFonts } from 'expo-font'
+
+import { Poppins_400Regular } from '@expo-google-fonts/poppins/400Regular'
+import { Poppins_500Medium } from '@expo-google-fonts/poppins/500Medium'
+import { Poppins_600SemiBold } from '@expo-google-fonts/poppins/600SemiBold'
+import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold'
+
+import { MuseoModerno_600SemiBold } from '@expo-google-fonts/museomoderno/600SemiBold'
+import { MuseoModerno_700Bold } from '@expo-google-fonts/museomoderno/700Bold'
+import { MuseoModerno_800ExtraBold } from '@expo-google-fonts/museomoderno/800ExtraBold'
+
+import AppNavigator from './src/navigation/AppNavigator'
 import { colors } from './src/theme'
 
 export default function App() {
-  const {
-    data: pets,
-    loading,
-    error,
-  } = useApi(`${API_URL}/api/mascotas`)
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    MuseoModerno_600SemiBold,
+    MuseoModerno_700Bold,
+    MuseoModerno_800ExtraBold,
+  })
 
-  return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.card}>
-        <Text style={styles.title}>PetPass Mobile</Text>
-        <Text style={styles.subtitle}>Fundación EC3</Text>
-
-        {loading && (
-          <View style={styles.status}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={styles.muted}>Cargando mascotas...</Text>
-          </View>
-        )}
-
-        {!loading && error && (
-          <Text style={styles.error}>{error}</Text>
-        )}
-
-        {!loading && !error && (
-          <>
-            <Text style={styles.success}>API conectada</Text>
-
-            <Text style={styles.text}>
-              Mascotas recibidas: {pets?.length ?? 0}
-            </Text>
-          </>
-        )}
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+        />
       </View>
+    )
+  }
 
-      <StatusBar style="dark" />
-    </SafeAreaView>
-  )
+  return <AppNavigator />
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  loading: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
     backgroundColor: colors.background,
-  },
-
-  card: {
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 24,
-    backgroundColor: colors.surface,
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text,
-  },
-
-  subtitle: {
-    marginTop: 4,
-    marginBottom: 24,
-    color: colors.muted,
-  },
-
-  status: {
-    gap: 10,
-    alignItems: 'flex-start',
-  },
-
-  muted: {
-    color: colors.muted,
-  },
-
-  text: {
-    marginTop: 8,
-    color: colors.text,
-  },
-
-  success: {
-    fontWeight: '700',
-    color: colors.success,
-  },
-
-  error: {
-    fontWeight: '600',
-    color: colors.danger,
   },
 })
