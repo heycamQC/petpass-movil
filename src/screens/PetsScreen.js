@@ -1,5 +1,5 @@
-
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
+import Button from '../components/Button'
 import { colors } from '../theme'
 
 function PetsScreen({ navigation }) {
@@ -10,33 +10,21 @@ function PetsScreen({ navigation }) {
         Opciones temporales para probar la navegación.
       </Text>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('Carnet')}
-      >
-        <Text style={styles.buttonText}>Ir al carnet</Text>
-      </Pressable>
+      <Button onPress={() => navigation.navigate('Carnet')}>
+        Ir al carnet
+      </Button>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('Historial')}
-      >
-        <Text style={styles.buttonText}>Ir al historial médico</Text>
-      </Pressable>
+      <Button variant="secondary" onPress={() => navigation.navigate('Historial')}>
+        Ir al historial médico
+      </Button>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('EditarMascota')}
-      >
-        <Text style={styles.buttonText}>Editar mascota</Text>
-      </Pressable>
+      <Button variant="secondary" onPress={() => navigation.navigate('EditarMascota')}>
+        Editar mascota
+      </Button>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('PerfilPublico')}
-      >
-        <Text style={styles.buttonText}>Ver perfil público</Text>
-      </Pressable>
+      <Button variant="secondary" onPress={() => navigation.navigate('PerfilPublico')}>
+        Ver perfil público
+      </Button>
     </View>
   )
 }
@@ -44,6 +32,7 @@ function PetsScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    gap: 12,
     padding: 24,
     backgroundColor: colors.background,
   },
@@ -53,21 +42,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   text: {
-    marginTop: 8,
-    marginBottom: 12,
     color: colors.muted,
-  },
-  button: {
-    padding: 14,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: colors.muted,
-    borderRadius: 10,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
   },
 })
 

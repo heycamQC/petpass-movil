@@ -1,5 +1,5 @@
-
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
+import Button from '../components/Button'
 import { colors } from '../theme'
 
 function OnboardingScreen({ navigation }) {
@@ -10,14 +10,9 @@ function OnboardingScreen({ navigation }) {
         Pantalla temporal de bienvenida.
       </Text>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('Login')}
-      >
-        <Text style={styles.buttonText}>
-          Continuar al inicio de sesión
-        </Text>
-      </Pressable>
+      <Button onPress={() => navigation.navigate('Login')}>
+        Continuar al inicio de sesión
+      </Button>
     </View>
   )
 }
@@ -25,6 +20,7 @@ function OnboardingScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    gap: 12,
     padding: 24,
     backgroundColor: colors.background,
   },
@@ -34,21 +30,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   text: {
-    marginTop: 8,
-    marginBottom: 12,
     color: colors.muted,
-  },
-  button: {
-    padding: 14,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: colors.muted,
-    borderRadius: 10,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
   },
 })
 

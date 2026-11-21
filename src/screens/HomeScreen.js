@@ -1,40 +1,45 @@
-
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
+import Button from '../components/Button'
+import ConfirmationModal from '../components/ConfirmationModal'
 import { colors } from '../theme'
 
 function HomeScreen({ navigation }) {
+  const [modalVisible, setModalVisible] = useState(false)
+
   return (
     <View style={styles.screen}>
       <Text style={styles.title}>Inicio</Text>
       <Text style={styles.text}>PetPass Mobile</Text>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('Mascotas')}
-      >
-        <Text style={styles.buttonText}>Mis mascotas</Text>
-      </Pressable>
+      <Button onPress={() => navigation.navigate('Mascotas')}>
+        Mis mascotas
+      </Button>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('Alertas')}
-      >
-        <Text style={styles.buttonText}>Alertas</Text>
-      </Pressable>
+      <Button variant="secondary" onPress={() => navigation.navigate('Alertas')}>
+        Alertas
+      </Button>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('Mapa')}
-      >
-        <Text style={styles.buttonText}>Mapa</Text>
-      </Pressable>
+      <Button variant="secondary" onPress={() => navigation.navigate('Mapa')}>
+        Mapa
+      </Button>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.navigate('Cuenta')}
-      >
-        <Text style={styles.buttonText}>Mi cuenta</Text>
-      </Pressable>
+      <Button variant="secondary" onPress={() => navigation.navigate('Cuenta')}>
+        Mi cuenta
+      </Button>
+
+      <Button variant="danger" onPress={() => setModalVisible(true)}>
+        Probar modal
+      </Button>
+
+      <ConfirmationModal
+        visible={modalVisible}
+        title="Confirmar acción"
+        message="¿Deseas continuar con esta prueba?"
+        onConfirm={() => setModalVisible(false)}
+        onCancel={() => setModalVisible(false)}
+        danger
+      />
     </View>
   )
 }
@@ -42,6 +47,7 @@ function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    gap: 12,
     padding: 24,
     backgroundColor: colors.background,
   },
@@ -51,21 +57,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   text: {
-    marginTop: 8,
-    marginBottom: 12,
     color: colors.muted,
-  },
-  button: {
-    padding: 14,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: colors.muted,
-    borderRadius: 10,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
   },
 })
 

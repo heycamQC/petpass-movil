@@ -1,5 +1,5 @@
-
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
+import Button from '../components/Button'
 import { colors } from '../theme'
 
 function LoginScreen({ navigation }) {
@@ -11,12 +11,9 @@ function LoginScreen({ navigation }) {
         Acceso temporal: todavía no hay autenticación real.
       </Text>
 
-      <Pressable
-        style={styles.button}
-        onPress={() => navigation.replace('Home')}
-      >
-        <Text style={styles.buttonText}>Entrar a PetPass</Text>
-      </Pressable>
+      <Button onPress={() => navigation.replace('Home')}>
+        Entrar a PetPass
+      </Button>
     </View>
   )
 }
@@ -24,6 +21,7 @@ function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    gap: 12,
     padding: 24,
     backgroundColor: colors.background,
   },
@@ -33,21 +31,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   text: {
-    marginTop: 8,
-    marginBottom: 12,
     color: colors.muted,
-  },
-  button: {
-    padding: 14,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: colors.muted,
-    borderRadius: 10,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
   },
 })
 
