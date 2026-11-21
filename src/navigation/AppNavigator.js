@@ -1,6 +1,7 @@
-
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+
+import MainScreenLayout from '../layouts/MainScreenLayout'
 
 import OnboardingScreen from '../screens/OnboardingScreen'
 import LoginScreen from '../screens/LoginScreen'
@@ -14,7 +15,26 @@ import AlertsScreen from '../screens/AlertsScreen'
 import MapScreen from '../screens/MapScreen'
 import AccountScreen from '../screens/AccountScreen'
 
+import { colors } from '../theme'
+
 const Stack = createNativeStackNavigator()
+
+function MainRoute({
+  children,
+  navigation,
+  route,
+  activeSection,
+}) {
+  return (
+    <MainScreenLayout
+      navigation={navigation}
+      currentRoute={route.name}
+      activeSection={activeSection}
+    >
+      {children}
+    </MainScreenLayout>
+  )
+}
 
 function AppNavigator() {
   return (
@@ -22,74 +42,114 @@ function AppNavigator() {
       <Stack.Navigator
         initialRouteName="Onboarding"
         screenOptions={{
-          headerBackTitle: 'Volver',
+          headerShown: false,
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
         }}
       >
         <Stack.Screen
           name="Onboarding"
           component={OnboardingScreen}
-          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="Login"
           component={LoginScreen}
-          options={{ title: 'PetPass' }}
         />
 
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: 'PetPass' }}
-        />
+        <Stack.Screen name="Home">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="home"
+            >
+              <HomeScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
 
-        <Stack.Screen
-          name="Mascotas"
-          component={PetsScreen}
-          options={{ title: 'Mis mascotas' }}
-        />
+        <Stack.Screen name="Mascotas">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="qr"
+            >
+              <PetsScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
 
-        <Stack.Screen
-          name="Carnet"
-          component={DigitalCardScreen}
-          options={{ title: 'Carnet digital' }}
-        />
+        <Stack.Screen name="Carnet">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="qr"
+            >
+              <DigitalCardScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
 
-        <Stack.Screen
-          name="Historial"
-          component={MedicalHistoryScreen}
-          options={{ title: 'Historial médico' }}
-        />
+        <Stack.Screen name="Historial">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="qr"
+            >
+              <MedicalHistoryScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
 
-        <Stack.Screen
-          name="EditarMascota"
-          component={EditPetScreen}
-          options={{ title: 'Editar mascota' }}
-        />
+        <Stack.Screen name="EditarMascota">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="qr"
+            >
+              <EditPetScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
 
         <Stack.Screen
           name="PerfilPublico"
           component={PublicPetProfileScreen}
-          options={{ title: 'Perfil público' }}
         />
 
-        <Stack.Screen
-          name="Alertas"
-          component={AlertsScreen}
-          options={{ title: 'Alertas' }}
-        />
+        <Stack.Screen name="Alertas">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="home"
+            >
+              <AlertsScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
 
-        <Stack.Screen
-          name="Mapa"
-          component={MapScreen}
-          options={{ title: 'Mapa' }}
-        />
+        <Stack.Screen name="Mapa">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="map"
+            >
+              <MapScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
 
-        <Stack.Screen
-          name="Cuenta"
-          component={AccountScreen}
-          options={{ title: 'Mi cuenta' }}
-        />
+        <Stack.Screen name="Cuenta">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="settings"
+            >
+              <AccountScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   )

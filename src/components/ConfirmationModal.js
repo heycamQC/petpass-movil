@@ -1,6 +1,17 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import Button from './Button'
-import { colors } from '../theme'
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
+
+import {
+  colors,
+  fonts,
+  radius,
+  shadows,
+} from '../theme'
 
 function ConfirmationModal({
   visible,
@@ -13,22 +24,62 @@ function ConfirmationModal({
   danger = false,
 }) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
       <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onCancel} />
+        <Pressable
+          style={styles.backdrop}
+          onPress={onCancel}
+        />
 
-        <View style={styles.modal}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
+        <View
+          style={[
+            styles.modal,
+            danger && styles.modalDanger,
+          ]}
+        >
+          <Text style={styles.title}>
+            {title}
+          </Text>
+
+          <Text style={styles.message}>
+            {message}
+          </Text>
 
           <View style={styles.actions}>
-            <Button variant="secondary" onPress={onCancel}>
-              {cancelText}
-            </Button>
+            <Pressable
+              onPress={onCancel}
+              style={({ pressed }) => [
+                styles.action,
+                styles.cancelAction,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text
+                style={styles.cancelText}
+              >
+                {cancelText}
+              </Text>
+            </Pressable>
 
-            <Button variant={danger ? 'danger' : 'primary'} onPress={onConfirm}>
-              {confirmText}
-            </Button>
+            <Pressable
+              onPress={onConfirm}
+              style={({ pressed }) => [
+                styles.action,
+                danger
+                  ? styles.dangerAction
+                  : styles.confirmAction,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.actionText}>
+                {confirmText}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -39,30 +90,121 @@ function ConfirmationModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'center',
+
     padding: 24,
+
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+
+    backgroundColor:
+      'rgba(0,0,0,0.42)',
   },
+
   modal: {
-    gap: 14,
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
+    width: '100%',
+    maxWidth: 330,
+
+    paddingHorizontal: 22,
+    paddingTop: 28,
+    paddingBottom: 24,
+
+    borderRadius: 32,
+
+    backgroundColor: colors.blueSoft,
+
+    ...shadows.card,
   },
+
+  modalDanger: {
+    backgroundColor: '#9ab2d4',
+  },
+
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
+    color: colors.textDark,
+
+    fontFamily: fonts.displayBold,
+    fontSize: 24,
+
+    lineHeight: 30,
+    textAlign: 'center',
   },
+
   message: {
-    color: colors.muted,
-    lineHeight: 20,
+    marginTop: 10,
+
+    color: '#4f4c49',
+
+    fontFamily: fonts.body,
+    fontSize: 14,
+
+    lineHeight: 21,
+    textAlign: 'center',
   },
+
   actions: {
-    gap: 10,
+    marginTop: 22,
+
+    flexDirection: 'row',
+
+    gap: 12,
+  },
+
+  action: {
+    flex: 1,
+
+    minHeight: 46,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    paddingHorizontal: 14,
+
+    borderRadius: radius.pill,
+  },
+
+  cancelAction: {
+    borderWidth: 2,
+    borderColor:
+      'rgba(255,255,255,0.85)',
+
+    backgroundColor:
+      'rgba(255,255,255,0.28)',
+  },
+
+  confirmAction: {
+    backgroundColor: colors.primaryDark,
+  },
+
+  dangerAction: {
+    backgroundColor: colors.orange,
+  },
+
+  actionText: {
+    color: colors.white,
+
+    fontFamily: fonts.displayBold,
+    fontSize: 14,
+  },
+
+  cancelText: {
+    color: colors.textDark,
+
+    fontFamily: fonts.displayBold,
+    fontSize: 14,
+  },
+
+  pressed: {
+    opacity: 0.82,
+
+    transform: [
+      {
+        scale: 0.97,
+      },
+    ],
   },
 })
 

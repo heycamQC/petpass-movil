@@ -1,5 +1,17 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native'
-import { colors } from '../theme'
+import { useState } from 'react'
+
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
+
+import {
+  colors,
+  fonts,
+  radius,
+} from '../theme'
 
 function FormField({
   label,
@@ -11,56 +23,110 @@ function FormField({
   multiline = false,
   secureTextEntry = false,
 }) {
+  const [focused, setFocused] = useState(false)
+
   return (
     <View style={styles.group}>
-      <Text style={styles.label}>{label}</Text>
+      {!!label && (
+        <Text style={styles.label}>
+          {label}
+        </Text>
+      )}
 
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={colors.placeholder}
         keyboardType={keyboardType}
         multiline={multiline}
         secureTextEntry={secureTextEntry}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         style={[
           styles.input,
           multiline && styles.multiline,
-          error && styles.inputError,
+          focused && styles.focused,
+          !!error && styles.inputError,
         ]}
       />
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && (
+        <Text style={styles.error}>
+          {error}
+        </Text>
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  group: { gap: 6 },
+  group: {
+    width: '100%',
+    gap: 4,
+  },
+
   label: {
+    paddingLeft: 16,
+
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
+
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+
+    letterSpacing: 0.2,
   },
+
   input: {
+    width: '100%',
     minHeight: 48,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
+
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderRadius: radius.pill,
+
     backgroundColor: colors.surface,
-    color: colors.text,
+    color: colors.textDark,
+
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
+
+  focused: {
+    borderColor: 'rgba(223, 104, 62, 0.35)',
+  },
+
   multiline: {
-    minHeight: 100,
-    paddingTop: 12,
+    minHeight: 110,
+    paddingTop: 16,
+
+    borderRadius: 24,
+
     textAlignVertical: 'top',
   },
+
   inputError: {
-    borderColor: colors.danger,
+    borderColor: colors.orange,
   },
+
   error: {
-    color: colors.danger,
+    paddingLeft: 16,
+
+    color: colors.orange,
+
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
   },
 })

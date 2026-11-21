@@ -1,22 +1,43 @@
-import { Pressable, StyleSheet, Text } from 'react-native'
-import { colors } from '../theme'
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+} from 'react-native'
 
-function Button({ children, onPress, variant = 'primary', disabled = false }) {
+import {
+  colors,
+  fonts,
+  radius,
+  shadows,
+  typography,
+} from '../theme'
+
+function Button({
+  children,
+  onPress,
+  variant = 'primary',
+  disabled = false,
+}) {
+  const finalVariant = disabled
+    ? 'disabled'
+    : variant
+
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        styles[variant],
+        styles[finalVariant],
         pressed && !disabled && styles.pressed,
-        disabled && styles.disabled,
       ]}
     >
-      <Text style={[
-        styles.text,
-        variant === 'secondary' && styles.textSecondary,
-      ]}>
+      <Text
+        style={[
+          styles.text,
+          styles[`text_${finalVariant}`],
+        ]}
+      >
         {children}
       </Text>
     </Pressable>
@@ -25,36 +46,72 @@ function Button({ children, onPress, variant = 'primary', disabled = false }) {
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 48,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
+    width: '100%',
+    minHeight: 50,
+
+    paddingHorizontal: 28,
+
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
-    borderWidth: 1,
+
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderRadius: radius.pill,
+
+    ...shadows.button,
   },
+
   primary: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.primaryDark,
   },
+
   secondary: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: colors.blue,
   },
+
   danger: {
-    backgroundColor: colors.danger,
-    borderColor: colors.danger,
+    backgroundColor: colors.orange,
   },
+
+  disabled: {
+    backgroundColor: colors.disabledBg,
+    borderColor: colors.disabledBorder,
+
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  pressed: {
+    opacity: 0.88,
+    transform: [
+      {
+        scale: 0.98,
+      },
+    ],
+  },
+
   text: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
+    fontFamily: fonts.displayBold,
+    fontSize: typography.button,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
-  textSecondary: {
-    color: colors.text,
+
+  text_primary: {
+    color: colors.white,
   },
-  pressed: { opacity: 0.8 },
-  disabled: { opacity: 0.45 },
+
+  text_secondary: {
+    color: colors.white,
+  },
+
+  text_danger: {
+    color: colors.white,
+  },
+
+  text_disabled: {
+    color: colors.orange,
+  },
 })
 
 export default Button

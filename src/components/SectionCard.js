@@ -1,17 +1,36 @@
-import { StyleSheet, View } from 'react-native'
-import { colors } from '../theme'
+import {
+  StyleSheet,
+  View,
+} from 'react-native'
 
-function SectionCard({ children, style }) {
-  return <View style={[styles.card, style]}>{children}</View>
+import {
+  colors,
+  radius,
+  shadows,
+} from '../theme'
+
+function SectionCard({
+  children,
+  style,
+}) {
+  return (
+    <View style={[styles.card, style]}>
+      {children}
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
   card: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
+    width: '100%',
+
+    padding: 20,
+
+    borderRadius: radius.lg,
+
     backgroundColor: colors.surface,
+
+    ...shadows.card,
   },
 })
 
