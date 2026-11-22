@@ -1,98 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import Button from '../components/Button'
+import FilterTab from '../components/FilterTab'
+import FormField from '../components/FormField'
+import MedicalRecordCard from '../components/MedicalRecordCard'
+import Message from '../components/Message'
+import ScreenContainer from '../components/ScreenContainer'
 
-import Button
-  from '../components/Button'
+import { API_URL } from '../config'
+import useApi from '../hooks/useApi'
+import { sendMedicalRequest } from '../utils/medicalApi'
+import { colors, fonts, radius, shadows, spacing } from '../theme'
 
-import FilterTab
-  from '../components/FilterTab'
-
-import FormField
-  from '../components/FormField'
-
-import MedicalRecordCard
-  from '../components/MedicalRecordCard'
-
-import ScreenContainer
-  from '../components/ScreenContainer'
-
-import {
-  colors,
-  fonts,
-  radius,
-  shadows,
-  spacing,
-} from '../theme'
-
+// Los tres tipos son exactamente los que acepta el backend de EC2.
 const FILTERS = [
-  {
-    id: 'vaccine',
-    label: 'Vacunas',
-  },
-  {
-    id: 'deworming',
-    label: 'Desparasitación',
-  },
-  {
-    id: 'consultation',
-    label: 'Consultas',
-  },
-]
-
-const INITIAL_RECORDS = [
-  {
-    id: 1,
-    petId: 1,
-    type: 'vaccine',
-    title: 'Vacuna antirrábica',
-    date: '10/08/2026',
-    nextDate: '10/08/2027',
-    place: 'Veterinaria San Martín',
-    description:
-      'Vacuna anual aplicada sin complicaciones.',
-  },
-
-  {
-    id: 2,
-    petId: 1,
-    type: 'vaccine',
-    title: 'Vacuna múltiple',
-    date: '14/03/2026',
-    nextDate: '14/03/2027',
-    place: 'VetCare La Paz',
-    description:
-      'Refuerzo anual de vacuna múltiple.',
-  },
-
-  {
-    id: 3,
-    petId: 1,
-    type: 'deworming',
-    title: 'Desparasitación interna',
-    date: '25/09/2026',
-    nextDate: '25/12/2026',
-    place: 'VetCare La Paz',
-    description:
-      'Tratamiento preventivo de rutina.',
-  },
-
-  {
-    id: 4,
-    petId: 1,
-    type: 'consultation',
-    title: 'Consulta general',
-    date: '02/10/2026',
-    nextDate: '',
-    place: 'Veterinaria Central',
-    description:
-      'Control general. Peso y signos vitales normales.',
-  },
+  { id: 'vaccine', label: 'Vacunas' },
+  { id: 'deworming', label: 'Desparasitación' },
+  { id: 'consultation', label: 'Consultas' },
 ]
 
 const EMPTY_FORM = {
@@ -103,307 +29,280 @@ const EMPTY_FORM = {
   description: '',
 }
 
-function MedicalHistoryScreen() {
-  const [
-    activeFilter,
-    setActiveFilter,
-  ] = useState('vaccine')
+// La API guarda fechas como 2026-11-22 (AAAA-MM-DD), no DD/MM/AAAA.
+function isValidISODate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  const parsed = new Date(Date.UTC(year, month - 1, day))
+  return parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+}
 
-  const [
-    records,
-    setRecords,
-  ] = useState(INITIAL_RECORDS)
+// Conserva la presentación visual anterior: DD/MM/AAAA dentro de la tarjeta.
+function displayDate(value) {
+  if (!value) return ''
+  if (!isValidISODate(value)) return String(value)
+  const [year, month, day] = value.split('-')
+  return `${day}/${month}/${year}`
+}
 
-  const [
-    medicalFormOpen,
-    setMedicalFormOpen,
-  ] = useState(false)
+function MedicalHistoryScreen({ navigation, route }) {
+  // PetsScreen y DigitalCardScreen deben pasar el ID real de SQLite.
+  const petId = Number(route.params?.id)
+  const validPetId = Number.isInteger(petId) && petId > 0
+  const petName = route.params?.petName || `Mascota #${petId}`
+  const url = validPetId ? `${API_URL}/api/mascotas/${petId}/historial` : null
+  const { data, loading, error, refetch } = useApi(url)
 
-  const [
-    editingRecordId,
-    setEditingRecordId,
-  ] = useState(null)
+  const [activeFilter, setActiveFilter] = useState('vaccine')
+  const [medicalFormOpen, setMedicalFormOpen] = useState(false)
+  const [editingRecordId, setEditingRecordId] = useState(null)
+  const [formData, setFormData] = useState(EMPTY_FORM)
+  const [formError, setFormError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const savingLock = useRef(false)
+  const firstFocus = useRef(true)
 
-  const [
-    formData,
-    setFormData,
-  ] = useState(EMPTY_FORM)
-
-  const visibleRecords =
-    useMemo(() => {
-      return records.filter(
-        (record) =>
-          record.type ===
-          activeFilter
-      )
-    }, [
-      activeFilter,
-      records,
-    ])
-
-  const activeFilterLabel =
-    FILTERS.find(
-      (filter) =>
-        filter.id ===
-        activeFilter
-    )?.label || ''
-
-  const handleChange =
-    (field) => (value) => {
-      setFormData((current) => ({
-        ...current,
-        [field]: value,
-      }))
+  // Al regresar a esta pantalla, volver a leer SQLite.
+  // En el primer foco, useApi ya hace el GET y no lo duplicamos.
+  useFocusEffect(useCallback(() => {
+    if (firstFocus.current) {
+      firstFocus.current = false
+    } else if (validPetId) {
+      refetch()
     }
+  }, [validPetId, refetch]))
 
-  const resetForm = () => {
+  const records = Array.isArray(data) ? data : []
+  const visibleRecords = useMemo(() =>
+    records.filter((record) => record.type === activeFilter),
+    [records, activeFilter]
+  )
+  const activeFilterLabel = FILTERS.find(
+    (filter) => filter.id === activeFilter
+  )?.label || ''
+
+  function handleChange(field) {
+    return (value) => {
+      setFormData((current) => ({ ...current, [field]: value }))
+      setFormError('')
+    }
+  }
+
+  function resetForm() {
     setMedicalFormOpen(false)
     setEditingRecordId(null)
     setFormData(EMPTY_FORM)
+    setFormError('')
   }
 
-  const handleNewRecord = () => {
+  function handleFilterChange(type) {
+    if (saving) return
+    setActiveFilter(type)
+    resetForm() // Nunca editar accidentalmente con un filtro distinto.
+  }
+
+  function handleNewRecord() {
+    if (saving) return
     setEditingRecordId(null)
     setFormData(EMPTY_FORM)
+    setFormError('')
     setMedicalFormOpen(true)
   }
 
-  const handleEdit = (record) => {
-    setEditingRecordId(record.id)
-
-    setFormData({
-      title: record.title,
-      date: record.date,
-      nextDate:
-        record.nextDate || '',
-      place:
-        record.place || '',
-      description:
-        record.description || '',
-    })
-
+  function handleEdit(record) {
+    if (saving) return
     setActiveFilter(record.type)
+    setEditingRecordId(record.id)
+    setFormData({
+      title: record.title || '',
+      date: record.date || '',
+      nextDate: record.nextDate || '',
+      place: record.place || '',
+      description: record.description || '',
+    })
+    setFormError('')
     setMedicalFormOpen(true)
   }
 
-  const handleSave = () => {
-    if (!formData.title.trim()) {
+  async function handleSave() {
+    if (!validPetId || savingLock.current) return
+
+    const title = formData.title.trim()
+    const date = formData.date.trim()
+    const nextDate = formData.nextDate.trim()
+
+    if (!title) {
+      setFormError('El título es obligatorio.')
+      return
+    }
+    if (!date) {
+      setFormError('La fecha es obligatoria.')
+      return
+    }
+    if (!isValidISODate(date)) {
+      setFormError('Usa una fecha real con formato AAAA-MM-DD. Ejemplo: 2026-11-22.')
+      return
+    }
+    if (nextDate && !isValidISODate(nextDate)) {
+      setFormError('La próxima fecha debe tener formato AAAA-MM-DD o quedar vacía.')
       return
     }
 
-    if (editingRecordId !== null) {
-      setRecords((current) =>
-        current.map((record) =>
-          record.id ===
-          editingRecordId
-            ? {
-                ...record,
-                ...formData,
-              }
-            : record
-        )
-      )
-
-      resetForm()
-      return
-    }
-
-    const newRecord = {
-      id: Date.now(),
-      petId: 1,
+    // Los nombres de campos coinciden con medicalRecords.controller.js.
+    const payload = {
       type: activeFilter,
-      ...formData,
+      title,
+      date,
+      nextDate,
+      place: formData.place.trim(),
+      description: formData.description.trim(),
     }
 
-    setRecords((current) => [
-      ...current,
-      newRecord,
-    ])
+    const editing = editingRecordId !== null
+    const path = editing
+      ? `/api/historial/${editingRecordId}`
+      : `/api/mascotas/${petId}/historial`
 
-    resetForm()
+    savingLock.current = true
+    setSaving(true)
+    setFormError('')
+    try {
+      await sendMedicalRequest(path, editing ? 'PUT' : 'POST', payload)
+      resetForm()
+      refetch() // El registro recién guardado se lee desde la API.
+    } catch (requestError) {
+      setFormError(requestError.message) // Conserva el formulario si falla.
+    } finally {
+      savingLock.current = false
+      setSaving(false)
+    }
+  }
+
+  if (!validPetId) {
+    return (
+      <ScreenContainer>
+        <Message error="No se recibió un ID válido de mascota." />
+        <Button variant="secondary" onPress={() => navigation.goBack()}>
+          Volver a mascotas
+        </Button>
+      </ScreenContainer>
+    )
+  }
+
+  if (loading || error || !Array.isArray(data)) {
+    return (
+      <ScreenContainer>
+        <View style={styles.heading}>
+          <Text style={styles.title}>Historial Médico</Text>
+          <Text style={styles.subtitle}>{petName}</Text>
+        </View>
+        <Message
+          loading={loading}
+          error={error || (!loading && 'La API no devolvió una lista válida de registros.')}
+        />
+        {!loading && (
+          <View style={styles.formActions}>
+            <Button variant="secondary" onPress={refetch}>Reintentar</Button>
+            <Button variant="secondary" onPress={() => navigation.goBack()}>
+              Volver a mascotas
+            </Button>
+          </View>
+        )}
+      </ScreenContainer>
+    )
   }
 
   return (
     <ScreenContainer>
       <View style={styles.heading}>
-        <Text style={styles.title}>
-          Historial Médico
-        </Text>
-
-        <Text style={styles.subtitle}>
-          Toby
-        </Text>
+        <Text style={styles.title}>Historial Médico</Text>
+        <Text style={styles.subtitle}>{petName}</Text>
       </View>
 
       <View style={styles.filters}>
-        {FILTERS.map(
-          (filter) => (
-            <FilterTab
-              key={filter.id}
-              label={filter.label}
-              active={
-                activeFilter ===
-                filter.id
-              }
-              onPress={() => {
-                setActiveFilter(
-                  filter.id
-                )
-
-                setMedicalFormOpen(
-                  false
-                )
-
-                setEditingRecordId(
-                  null
-                )
-              }}
-            />
-          )
-        )}
+        {FILTERS.map((filter) => (
+          <FilterTab
+            key={filter.id}
+            label={filter.label}
+            active={activeFilter === filter.id}
+            onPress={() => handleFilterChange(filter.id)}
+          />
+        ))}
       </View>
 
       <View style={styles.sectionHeader}>
         <View>
-          <Text
-            style={
-              styles.sectionTitle
-            }
-          >
-            {activeFilterLabel}
-          </Text>
-
-          <Text
-            style={
-              styles.sectionSubtitle
-            }
-          >
-            {
-              visibleRecords.length
-            }{' '}
-            registro
-            {visibleRecords.length === 1
-              ? ''
-              : 's'}
+          <Text style={styles.sectionTitle}>{activeFilterLabel}</Text>
+          <Text style={styles.sectionSubtitle}>
+            {visibleRecords.length} registro{visibleRecords.length === 1 ? '' : 's'}
           </Text>
         </View>
-
         <Pressable
           onPress={handleNewRecord}
+          disabled={saving}
           accessibilityLabel="Agregar registro médico"
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed &&
-              styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
         >
-          <Text
-            style={styles.addSymbol}
-          >
-            +
-          </Text>
+          <Text style={styles.addSymbol}>+</Text>
         </Pressable>
       </View>
 
       {medicalFormOpen && (
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>
-            {editingRecordId !== null
-              ? 'Editar registro'
-              : 'Nuevo registro'}
+            {editingRecordId !== null ? 'Editar registro' : 'Nuevo registro'}
           </Text>
-
-          <Text
-            style={
-              styles.formSubtitle
-            }
-          >
-            {activeFilterLabel}
-          </Text>
+          <Text style={styles.formSubtitle}>{activeFilterLabel}</Text>
 
           <View style={styles.form}>
             <FormField
-              label="Título"
+              label="Título *"
               value={formData.title}
-              onChangeText={
-                handleChange('title')
-              }
+              onChangeText={handleChange('title')}
               placeholder="Ej. Vacuna antirrábica"
             />
-
             <FormField
-              label="Fecha"
+              label="Fecha * (AAAA-MM-DD)"
               value={formData.date}
-              onChangeText={
-                handleChange('date')
-              }
-              placeholder="DD/MM/AAAA"
+              onChangeText={handleChange('date')}
+              placeholder="Ej. 2026-11-22"
             />
-
             <FormField
-              label="Próxima fecha"
-              value={
-                formData.nextDate
-              }
-              onChangeText={
-                handleChange(
-                  'nextDate'
-                )
-              }
-              placeholder="Opcional"
+              label="Próxima fecha (AAAA-MM-DD)"
+              value={formData.nextDate}
+              onChangeText={handleChange('nextDate')}
+              placeholder="Opcional: 2027-11-22"
             />
-
             <FormField
               label="Lugar"
               value={formData.place}
-              onChangeText={
-                handleChange('place')
-              }
+              onChangeText={handleChange('place')}
               placeholder="Veterinaria"
             />
-
             <FormField
               label="Descripción"
-              value={
-                formData.description
-              }
-              onChangeText={
-                handleChange(
-                  'description'
-                )
-              }
+              value={formData.description}
+              onChangeText={handleChange('description')}
               placeholder="Notas del registro"
               multiline
             />
+            {!!formError && <Message error={formError} />}
           </View>
 
-          <View
-            style={
-              styles.formActions
-            }
-          >
-            <Button
-              onPress={handleSave}
-            >
-              {editingRecordId !==
-              null
+          <View style={styles.formActions}>
+            <Button onPress={handleSave} disabled={saving}>
+              {saving ? 'Guardando...' : editingRecordId !== null
                 ? 'Guardar cambios'
                 : 'Guardar registro'}
             </Button>
-
             <Pressable
               onPress={resetForm}
-              style={
-                styles.cancelButton
-              }
+              disabled={saving}
+              style={styles.cancelButton}
             >
-              <Text
-                style={
-                  styles.cancelText
-                }
-              >
-                Cancelar
-              </Text>
+              <Text style={styles.cancelText}>Cancelar</Text>
             </Pressable>
           </View>
         </View>
@@ -411,66 +310,27 @@ function MedicalHistoryScreen() {
 
       {!medicalFormOpen && (
         <View style={styles.records}>
-          {visibleRecords.length >
-          0 ? (
-            visibleRecords.map(
-              (record) => (
-                <MedicalRecordCard
-                  key={record.id}
-                  title={record.title}
-                  date={record.date}
-                  nextDate={
-                    record.nextDate
-                  }
-                  place={record.place}
-                  description={
-                    record.description
-                  }
-                  type={record.type}
-                  onEdit={() =>
-                    handleEdit(
-                      record
-                    )
-                  }
-                />
-              )
-            )
+          {visibleRecords.length > 0 ? (
+            visibleRecords.map((record) => (
+              <MedicalRecordCard
+                key={record.id}
+                type={record.type}
+                title={record.title}
+                date={displayDate(record.date)}
+                nextDate={displayDate(record.nextDate)}
+                place={record.place}
+                description={record.description}
+                onEdit={() => handleEdit(record)}
+              />
+            ))
           ) : (
-            <View
-              style={
-                styles.emptyState
-              }
-            >
-              <View
-                style={
-                  styles.emptyIcon
-                }
-              >
-                <Text
-                  style={
-                    styles.emptySymbol
-                  }
-                >
-                  +
-                </Text>
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <Text style={styles.emptySymbol}>+</Text>
               </View>
-
-              <Text
-                style={
-                  styles.emptyTitle
-                }
-              >
-                Sin registros
-              </Text>
-
-              <Text
-                style={
-                  styles.emptyText
-                }
-              >
-                Todavía no hay
-                registros en esta
-                categoría.
+              <Text style={styles.emptyTitle}>Sin registros</Text>
+              <Text style={styles.emptyText}>
+                Todavía no hay registros en esta categoría.
               </Text>
             </View>
           )}

@@ -60,8 +60,10 @@ function PetsScreen({ navigation }) {
 
   function openHistory() {
     if (selectedPet) {
-      // La persistencia de historial se incorpora en Parte 4.
-      navigation.navigate('Historial', { id: selectedPet.id })
+      navigation.navigate('Historial', {
+        id: selectedPet.id,
+        petName: selectedPet.name,
+      })
     }
   }
 

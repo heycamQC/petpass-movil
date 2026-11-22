@@ -236,6 +236,16 @@ function DigitalCardScreen({ navigation, route }) {
 
         <Button
           variant="secondary"
+          onPress={() => navigation.navigate('Historial', {
+            id: pet.id,
+            petName: pet.name,
+          })}
+        >
+          Ver historial médico
+        </Button>
+
+        <Button
+          variant="secondary"
           onPress={() =>
             Alert.alert(
               'Carnet digital',
