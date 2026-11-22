@@ -7,6 +7,7 @@ import OnboardingScreen from '../screens/OnboardingScreen'
 import LoginScreen from '../screens/LoginScreen'
 import HomeScreen from '../screens/HomeScreen'
 import PetsScreen from '../screens/PetsScreen'
+import RegisterPetScreen from '../screens/RegisterPetScreen'
 import DigitalCardScreen from '../screens/DigitalCardScreen'
 import MedicalHistoryScreen from '../screens/MedicalHistoryScreen'
 import EditPetScreen from '../screens/EditPetScreen'
@@ -76,6 +77,17 @@ function AppNavigator() {
               activeSection="qr"
             >
               <PetsScreen {...props} />
+            </MainRoute>
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen name="RegistrarMascota">
+          {(props) => (
+            <MainRoute
+              {...props}
+              activeSection="qr"
+            >
+              <RegisterPetScreen {...props} />
             </MainRoute>
           )}
         </Stack.Screen>
