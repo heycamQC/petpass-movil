@@ -9,6 +9,10 @@ import {
 import { Image } from 'expo-image'
 
 import Button from '../components/Button'
+import Message from '../components/Message'
+import useApi from '../hooks/useApi'
+import { API_URL } from '../config'
+import { getPetPhotoSource } from '../utils/petPhoto'
 import ScreenContainer from '../components/ScreenContainer'
 
 import {
@@ -17,18 +21,6 @@ import {
   radius,
   spacing,
 } from '../theme'
-
-const PUG =
-  require('../../assets/pug-avatar.svg')
-
-const PREVIEW_PET = {
-  id: 1,
-  name: 'Toby',
-  photo: PUG,
-  species: 'Perro',
-  breed: 'Pug',
-  age: '5 años',
-}
 
 function QrPlaceholder() {
   const size = 11
@@ -101,16 +93,41 @@ function InfoBox({
   )
 }
 
-function DigitalCardScreen({
-  navigation,
-}) {
-  const { width } =
-    useWindowDimensions()
+function DigitalCardScreen({ navigation, route }) {
+  const { width } = useWindowDimensions()
+  const mobile = width <= 440
 
-  const mobile =
-    width <= 440
+  // El ID viene de PetsScreen, NO de un objeto fijo Toby.
+  const petId = Number(route.params?.id)
+  const validId = Number.isInteger(petId) && petId > 0
+  const url = validId ? `${API_URL}/api/mascotas/${petId}` : null
+  const { data: pet, loading, error } = useApi(url)
 
-  const pet = PREVIEW_PET
+  if (!validId) {
+    return (
+      <ScreenContainer>
+        <Message error="No se recibió un ID válido de mascota." />
+        <Button variant="secondary" onPress={() => navigation.goBack()}>
+          Volver a mascotas
+        </Button>
+      </ScreenContainer>
+    )
+  }
+
+  if (loading || error || !pet) {
+    return (
+      <ScreenContainer>
+        <Message loading={loading} error={error || (!loading && 'No se encontró la mascota.')} />
+        {!loading && (
+          <Button variant="secondary" onPress={() => navigation.goBack()}>
+            Volver a mascotas
+          </Button>
+        )}
+      </ScreenContainer>
+    )
+  }
+
+  const photoSource = getPetPhotoSource(pet.photo)
 
   return (
     <ScreenContainer>
@@ -143,11 +160,17 @@ function DigitalCardScreen({
           ]}
         >
           <View style={styles.photoWrapper}>
-            <Image
-              source={pet.photo}
-              contentFit="cover"
-              style={styles.photo}
-            />
+            {photoSource ? (
+              <Image
+                source={photoSource}
+                contentFit="cover"
+                style={styles.photo}
+              />
+            ) : (
+              <Text style={styles.photoFallback}>
+                {pet.species === 'Gato' ? '🐱' : pet.species === 'Perro' ? '🐶' : '🐾'}
+              </Text>
+            )}
           </View>
 
           <View
@@ -162,11 +185,11 @@ function DigitalCardScreen({
             </Text>
 
             <Text style={styles.petMeta}>
-              {pet.species} · {pet.breed}
+              {pet.species} · {pet.breed || 'Raza no registrada'}
             </Text>
 
             <Text style={styles.petMeta}>
-              {pet.age}
+              {pet.age || 'Edad no registrada'}
             </Text>
           </View>
         </View>
@@ -195,7 +218,7 @@ function DigitalCardScreen({
           <QrPlaceholder />
 
           <Text style={styles.qrText}>
-            Escanea para ver el perfil público
+            Código QR disponible próximamente
           </Text>
         </View>
       </View>
@@ -204,7 +227,7 @@ function DigitalCardScreen({
         <Button
           onPress={() =>
             navigation.navigate(
-              'PerfilPublico'
+              'PerfilPublico', { id: pet.id }
             )
           }
         >
@@ -322,6 +345,10 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: '100%',
+  },
+
+  photoFallback: {
+    fontSize: 46,
   },
 
   petText: {
