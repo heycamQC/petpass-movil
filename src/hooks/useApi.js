@@ -1,19 +1,22 @@
+import { useCallback, useEffect, useState } from 'react'
 
-import { useEffect, useState } from 'react'
-
-// Tiempo máximo de espera: 5 segundos
+// Conservamos el timeout y la cancelación que dejó Soledad en Parte 2.
 const TIMEOUT_MS = 5000
 
-// GET reutilizable: admite URL null cuando falta un ID.
+// refetch() vuelve a ejecutar el mismo GET sin cambiar su URL.
 function useApi(url) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(Boolean(url))
   const [error, setError] = useState('')
+  const [refreshCount, setRefreshCount] = useState(0)
+
+  const refetch = useCallback(() => {
+    setRefreshCount((current) => current + 1)
+  }, [])
 
   useEffect(() => {
     let active = true
     let timeoutId
-
     const controller = new AbortController()
 
     if (!url) {
@@ -33,17 +36,12 @@ function useApi(url) {
       setData(null)
 
       try {
-        // Consulta real a la API
         const request = async () => {
-          const response = await fetch(url, {
-            signal: controller.signal
-          })
-
+          const response = await fetch(url, { signal: controller.signal })
           const result = await response.json()
           return { response, result }
         }
 
-        // Evita esperar indefinidamente
         const timeout = new Promise((_, reject) => {
           timeoutId = setTimeout(() => {
             controller.abort()
@@ -51,35 +49,23 @@ function useApi(url) {
           }, TIMEOUT_MS)
         })
 
-        const { response, result } = await Promise.race([
-          request(),
-          timeout
-        ])
+        const { response, result } = await Promise.race([request(), timeout])
 
         if (!active) return
 
         if (response.ok) {
           setData(result)
         } else {
-          setError(
-            result.error ||
-            'Ocurrió un error al consultar la API'
-          )
+          setError(result.error || 'Ocurrió un error al consultar la API')
         }
-
       } catch {
         if (active) {
-          setError(
-            'No se pudo conectar con la API. ¿Está encendida?'
-          )
+          setError('No se pudo conectar con la API. ¿Está encendida?')
         }
-
       } finally {
         clearTimeout(timeoutId)
 
-        if (active) {
-          setLoading(false)
-        }
+        if (active) setLoading(false)
       }
     }
 
@@ -90,10 +76,9 @@ function useApi(url) {
       clearTimeout(timeoutId)
       controller.abort()
     }
+  }, [url, refreshCount])
 
-  }, [url])
-
-  return { data, loading, error }
+  return { data, loading, error, refetch }
 }
 
 export default useApi

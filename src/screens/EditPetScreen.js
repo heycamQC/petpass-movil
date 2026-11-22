@@ -1,223 +1,176 @@
-import {
-  useState,
-} from 'react'
-
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
-
+import { useEffect, useState } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
 
-import Button
-  from '../components/Button'
+import Button from '../components/Button'
+import FormField from '../components/FormField'
+import Message from '../components/Message'
+import ScreenContainer from '../components/ScreenContainer'
+import SelectField from '../components/SelectField'
+import { API_URL } from '../config'
+import useApi from '../hooks/useApi'
+import { sendPetRequest } from '../utils/petApi'
+import { getPetPhotoSource } from '../utils/petPhoto'
+import { colors, fonts, radius, shadows, spacing } from '../theme'
 
-import FormField
-  from '../components/FormField'
+const SPECIES_OPTIONS = [
+  { label: 'Perro', value: 'Perro' },
+  { label: 'Gato', value: 'Gato' },
+]
 
-import ScreenContainer
-  from '../components/ScreenContainer'
+const EMPTY_FORM = { name: '', species: '', breed: '', age: '' }
 
-import {
-  colors,
-  fonts,
-  radius,
-  shadows,
-} from '../theme'
+function EditPetScreen({ navigation, route }) {
+  const petId = Number(route.params?.id)
+  const validId = Number.isInteger(petId) && petId > 0
+  const url = validId ? `${API_URL}/api/mascotas/${petId}` : null
+  const { data: pet, loading, error } = useApi(url)
 
-const PUG =
-  require('../../assets/pug-avatar.svg')
+  const [formData, setFormData] = useState(EMPTY_FORM)
+  const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
 
-const INITIAL_FORM = {
-  name: 'Toby',
-  species: 'Perro',
-  breed: 'Pug',
-  age: '5 años',
-}
+  // No mostramos más los datos fijos de Toby: usamos el GET individual.
+  useEffect(() => {
+    if (!pet) return
 
-function EditPetScreen({
-  navigation,
-}) {
-  const [
-    formData,
-    setFormData,
-  ] = useState(INITIAL_FORM)
+    setFormData({
+      name: pet.name || '',
+      species: pet.species || '',
+      breed: pet.breed || '',
+      age: pet.age || '',
+    })
+    setSaveError('')
+  }, [pet])
 
-  const [
-    error,
-    setError,
-  ] = useState('')
+  function changeField(field, value) {
+    setFormData((current) => ({ ...current, [field]: value }))
+    setSaveError('')
+  }
 
-  const handleChange =
-    (field) => (value) => {
-      setFormData(
-        (current) => ({
-          ...current,
+  async function handleSave() {
+    if (saving || !pet) return
 
-          [field]: value,
-        })
-      )
+    const name = formData.name.trim()
+    const species = formData.species
 
-      setError('')
-    }
-
-  const handleSave = () => {
-    if (
-      !formData.name.trim() ||
-      !formData.species.trim()
-    ) {
-      setError(
-        'El nombre y la especie son obligatorios.'
-      )
-
+    if (!name || !species) {
+      setSaveError('El nombre y la especie son obligatorios.')
       return
     }
 
-    /*
-      En C1 solo cerramos el flujo visual.
+    if (!['Perro', 'Gato'].includes(species)) {
+      setSaveError('Selecciona una especie válida.')
+      return
+    }
 
-      El PUT real se conectará
-      en la parte funcional.
-    */
-    navigation.goBack()
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      // Solo cambiamos estos cuatro campos. El backend conserva los demás.
+      await sendPetRequest(`/api/mascotas/${petId}`, 'PUT', {
+        name,
+        species,
+        breed: formData.breed.trim(),
+        age: formData.age.trim(),
+      })
+      navigation.goBack()
+    } catch (err) {
+      setSaveError(err.message)
+    } finally {
+      setSaving(false)
+    }
   }
+
+  if (!validId) {
+    return (
+      <ScreenContainer>
+        <Message error="No se recibió un ID válido de mascota." />
+        <Button variant="secondary" onPress={() => navigation.goBack()}>
+          Volver
+        </Button>
+      </ScreenContainer>
+    )
+  }
+
+  if (loading || error || !pet) {
+    return (
+      <ScreenContainer>
+        <Message loading={loading} error={error || (!loading && 'No se encontró la mascota.')} />
+        {!loading && (
+          <Button variant="secondary" onPress={() => navigation.goBack()}>
+            Volver a mascotas
+          </Button>
+        )}
+      </ScreenContainer>
+    )
+  }
+
+  const photo = getPetPhotoSource(pet.photo)
 
   return (
     <ScreenContainer>
       <View style={styles.heading}>
-        <Pressable
-          onPress={() =>
-            navigation.goBack()
-          }
-          style={({ pressed }) => [
-            styles.back,
-            pressed &&
-              styles.pressed,
-          ]}
-        >
-          <Text
-            style={styles.backText}
-          >
-            ← Volver
-          </Text>
-        </Pressable>
-
-        <Text style={styles.title}>
-          Editar mascota
-        </Text>
-
-        <Text
-          style={styles.subtitle}
-        >
-          Actualiza la información
-          principal de Toby.
+        <Text style={styles.title}>Editar mascota</Text>
+        <Text style={styles.subtitle}>
+          Actualiza la información principal de {pet.name}.
         </Text>
       </View>
 
       <View style={styles.panel}>
-        <View
-          style={
-            styles.avatar
-          }
-        >
-          <Image
-            source={PUG}
-            contentFit="cover"
-            style={styles.photo}
-          />
+        <View style={styles.avatar}>
+          {photo ? (
+            <Image source={photo} contentFit="cover" style={styles.photo} />
+          ) : (
+            <Text style={styles.fallback}>
+              {pet.species === 'Gato' ? '🐱' : '🐶'}
+            </Text>
+          )}
         </View>
 
         <View style={styles.form}>
           <FormField
-            label="Nombre"
-            value={
-              formData.name
-            }
-            onChangeText={
-              handleChange(
-                'name'
-              )
-            }
+            label="Nombre *"
+            value={formData.name}
+            onChangeText={(value) => changeField('name', value)}
             placeholder="Nombre de tu mascota"
           />
 
-          <FormField
-            label="Especie"
-            value={
-              formData.species
-            }
-            onChangeText={
-              handleChange(
-                'species'
-              )
-            }
-            placeholder="Ej. Perro"
+          <SelectField
+            label="Especie *"
+            value={formData.species}
+            options={SPECIES_OPTIONS}
+            onChange={(value) => changeField('species', value)}
           />
 
           <FormField
             label="Raza"
-            value={
-              formData.breed
-            }
-            onChangeText={
-              handleChange(
-                'breed'
-              )
-            }
-            placeholder="Ej. Pug"
+            value={formData.breed}
+            onChangeText={(value) => changeField('breed', value)}
+            placeholder="Ej. Pug o mestizo"
           />
 
           <FormField
             label="Edad"
-            value={
-              formData.age
-            }
-            onChangeText={
-              handleChange(
-                'age'
-              )
-            }
+            value={formData.age}
+            onChangeText={(value) => changeField('age', value)}
             placeholder="Ej. 5 años"
           />
 
-          {!!error && (
-            <View
-              style={
-                styles.error
-              }
-            >
-              <Text
-                style={
-                  styles.errorText
-                }
-              >
-                {error}
-              </Text>
-            </View>
-          )}
+          {!!saveError && <Text style={styles.error}>{saveError}</Text>}
 
-          <View
-            style={
-              styles.actions
-            }
+          <Button disabled={saving} onPress={handleSave}>
+            {saving ? 'Guardando...' : 'Guardar cambios'}
+          </Button>
+
+          <Button
+            variant="secondary"
+            disabled={saving}
+            onPress={() => navigation.goBack()}
           >
-            <Button
-              onPress={handleSave}
-            >
-              Guardar cambios
-            </Button>
-
-            <Button
-              variant="secondary"
-              onPress={() =>
-                navigation.goBack()
-              }
-            >
-              Cancelar
-            </Button>
-          </View>
+            Cancelar
+          </Button>
         </View>
       </View>
     </ScreenContainer>
@@ -225,116 +178,52 @@ function EditPetScreen({
 }
 
 const styles = StyleSheet.create({
-  heading: {
-    marginBottom: 22,
-  },
-
-  back: {
-    alignSelf: 'flex-start',
-
-    marginBottom: 16,
-  },
-
-  backText: {
-    color: colors.blueDark,
-
-    fontFamily:
-      fonts.bodySemiBold,
-    fontSize: 13,
-  },
-
+  heading: { marginBottom: 22 },
   title: {
     color: colors.text,
-
-    fontFamily:
-      fonts.displayBold,
+    fontFamily: fonts.displayBold,
     fontSize: 28,
-
     lineHeight: 34,
   },
-
   subtitle: {
     marginTop: 6,
-
     color: colors.muted,
-
     fontFamily: fonts.body,
     fontSize: 14,
-
     lineHeight: 20,
   },
-
   panel: {
     width: '100%',
-
+    maxWidth: 480,
+    alignSelf: 'center',
     padding: 22,
-
     borderWidth: 1,
-    borderColor:
-      colors.border,
-
-    borderRadius: 28,
-
-    backgroundColor:
-      colors.white,
-
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.white,
     ...shadows.soft,
   },
-
   avatar: {
     width: 120,
     height: 120,
-
-    marginBottom: 24,
-
     alignSelf: 'center',
-
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    borderRadius: radius.pill,
     overflow: 'hidden',
-
-    borderRadius:
-      radius.pill,
-
-    backgroundColor:
-      colors.blue,
+    backgroundColor: colors.blue,
   },
-
-  photo: {
-    width: '100%',
-    height: '100%',
-  },
-
-  form: {
-    gap: 16,
-  },
-
+  photo: { width: '100%', height: '100%' },
+  fallback: { fontSize: 48 },
+  form: { gap: spacing.md },
   error: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-
-    borderRadius: 18,
-
-    backgroundColor:
-      colors.dangerBg,
-  },
-
-  errorText: {
+    padding: 12,
+    borderRadius: radius.sm,
+    backgroundColor: colors.dangerBg,
     color: colors.danger,
-
-    fontFamily:
-      fonts.bodyMedium,
-    fontSize: 12.5,
-
-    lineHeight: 18,
-  },
-
-  actions: {
-    marginTop: 4,
-
-    gap: 10,
-  },
-
-  pressed: {
-    opacity: 0.75,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
   },
 })
 
