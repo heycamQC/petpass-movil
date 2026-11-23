@@ -24,6 +24,12 @@ export function getPetPhotoSource(photo) {
     return { uri: path }
   }
 
+  // Las fotos seleccionadas en Expo se comprimen en JPEG base64 y
+  // se guardan directamente en pets.photo (TEXT) de SQLite.
+  if (/^data:image\/jpeg;base64,[a-z0-9+/=]+$/i.test(path)) {
+    return { uri: path }
+  }
+
   // SVG remoto, URI local de otro equipo, imagen no disponible o ruta relativa.
   return null
 }

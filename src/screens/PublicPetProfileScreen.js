@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 
 import {
+  Alert,
   Modal,
   ScrollView,
   Pressable,
@@ -21,7 +22,7 @@ import ScreenContainer from '../components/ScreenContainer'
 import { API_URL } from '../config'
 import useApi from '../hooks/useApi'
 import { getPetPhotoSource } from '../utils/petPhoto'
-
+import {getPhoneFromLostAlerts,openPhoneDialer,} from '../utils/nativeContact'
 import OnboardingConfetti
   from '../components/decorative/OnboardingConfetti'
 
@@ -38,14 +39,67 @@ function PublicPetProfileScreen({ navigation, route }) {
   const url = validId ? `${API_URL}/api/mascotas/${petId}` : null
   const { data: pet, loading, error, refetch } = useApi(url)
   const firstFocus = useRef(true)
-  const [isCalling, setIsCalling] = useState(false)
   const [locationModalVisible, setLocationModalVisible] = useState(false)
   const [successModalVisible, setSuccessModalVisible] = useState(false)
+    // Consultar alertas solo si la mascota está perdida.
+  const alertsUrl = validId && pet?.status === 'lost'
+    ? `${API_URL}/api/alertas?type=lost`
+    : null
+
+  const {
+    data: lostAlerts,
+    loading: alertsLoading,
+    error: alertsError,
+    refetch: refetchAlerts,
+  } = useApi(alertsUrl)
+
+  // Buscar un teléfono válido asociado a esta mascota.
+  const contactPhone = getPhoneFromLostAlerts(lostAlerts, petId)
 
   useFocusEffect(useCallback(() => {
-    if (firstFocus.current) firstFocus.current = false
-    else if (validId) refetch()
-  }, [refetch, validId]))
+    if (firstFocus.current) {
+      firstFocus.current = false
+    } else if (validId) {
+      refetch()
+      refetchAlerts()
+    }
+  }, [refetch, refetchAlerts, validId]))
+    async function handleCallTutor() {
+    if (pet?.status !== 'lost') return
+
+    if (alertsLoading) {
+      Alert.alert(
+        'Consultando contacto',
+        'Todavía estamos verificando la alerta de pérdida.'
+      )
+      return
+    }
+
+    if (alertsError) {
+      Alert.alert(
+        'Error de conexión',
+        'No se pudo verificar el contacto. Intenta nuevamente.'
+      )
+      return
+    }
+
+    if (!contactPhone) {
+      Alert.alert(
+        'Contacto telefónico no disponible',
+        'Esta mascota no tiene una alerta de pérdida activa con un teléfono válido.'
+      )
+      return
+    }
+
+    try {
+      await openPhoneDialer(contactPhone)
+    } catch (err) {
+      Alert.alert(
+        'Teléfono',
+        err.message || 'No se pudo abrir el marcador telefónico.'
+      )
+    }
+  }
 
   if (!validId) {
     return (
@@ -77,97 +131,6 @@ function PublicPetProfileScreen({ navigation, route }) {
     setLocationModalVisible(false)
     setSuccessModalVisible(true)
   }
-
-  if (isCalling) {
-    return (
-      <SafeAreaView
-        edges={['top', 'bottom']}
-        style={styles.callPage}
-      >
-        <View style={styles.confetti}>
-          <OnboardingConfetti />
-        </View>
-
-        <View style={styles.callCard}>
-          <View style={styles.callAvatar}>
-            {photoSource ? (
-              <Image source={photoSource} contentFit="cover" style={styles.photo} />
-            ) : (
-              <Text style={styles.photoFallbackText}>{photoFallback}</Text>
-            )}
-          </View>
-
-          <Text style={styles.callTitle}>
-            Llamada de emergencia
-          </Text>
-
-          <Text style={styles.callSubtitle}>
-            Vista previa de llamada para{' '}
-            <Text style={styles.bold}>
-              {pet.name}
-            </Text>
-          </Text>
-
-          <Text style={styles.demoNote}>
-            Demostración: no se realiza ninguna llamada telefónica.
-          </Text>
-          <View style={styles.callControls}>
-            <View style={styles.callControl}>
-              <View style={styles.callCircle}>
-                <Text style={styles.callIcon}>
-                  🔊
-                </Text>
-              </View>
-
-              <Text style={styles.callLabel}>
-                Speaker
-              </Text>
-            </View>
-
-            <View style={styles.callControl}>
-              <View style={styles.callCircle}>
-                <Text style={styles.callIcon}>
-                  🔇
-                </Text>
-              </View>
-
-              <Text style={styles.callLabel}>
-                Mute
-              </Text>
-            </View>
-
-            <View style={styles.callControl}>
-              <View style={styles.callCircle}>
-                <Text style={styles.callIcon}>
-                  ▦
-                </Text>
-              </View>
-
-              <Text style={styles.callLabel}>
-                Keypad
-              </Text>
-            </View>
-          </View>
-
-          <Pressable
-            onPress={() =>
-              setIsCalling(false)
-            }
-            accessibilityLabel="Finalizar llamada"
-            style={({ pressed }) => [
-              styles.endCall,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.endCallIcon}>
-              ☎
-            </Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    )
-  }
-
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safePage}>
       <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
@@ -239,18 +202,24 @@ function PublicPetProfileScreen({ navigation, route }) {
             </Button>
 
             <Pressable
-              onPress={() =>
-                setIsCalling(true)
-              }
-              style={({ pressed }) => [
-                styles.callButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.callButtonText}>
-                Vista previa de llamada
-              </Text>
-            </Pressable>
+            onPress={handleCallTutor}
+            accessibilityRole="button"
+            accessibilityLabel="Contactar al tutor"
+            style={({ pressed }) => [
+              styles.callButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.callButtonText}>
+              {alertsLoading
+                ? 'Consultando contacto...'
+                : alertsError
+                  ? 'No se pudo verificar el contacto'
+                  : contactPhone
+                    ? 'Abrir teléfono del tutor'
+                    : 'Contacto telefónico no disponible'}
+            </Text>
+          </Pressable>
           </View>
         ) : (
           <View style={styles.safeMessage}>

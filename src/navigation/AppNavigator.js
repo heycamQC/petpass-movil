@@ -11,6 +11,7 @@ import HomeScreen from '../screens/HomeScreen'
 import PetsScreen from '../screens/PetsScreen'
 import RegisterPetScreen from '../screens/RegisterPetScreen'
 import DigitalCardScreen from '../screens/DigitalCardScreen'
+import QRScannerScreen from '../screens/QRScannerScreen'
 import MedicalHistoryScreen from '../screens/MedicalHistoryScreen'
 import EditPetScreen from '../screens/EditPetScreen'
 import PublicPetProfileScreen from '../screens/PublicPetProfileScreen'
@@ -135,6 +136,10 @@ function AppNavigator() {
           )}
         </Stack.Screen>
 
+        <Stack.Screen
+          name="EscanearQR"
+          component={QRScannerScreen}
+        />
         <Stack.Screen
           name="PerfilPublico"
           component={PublicPetProfileScreen}
