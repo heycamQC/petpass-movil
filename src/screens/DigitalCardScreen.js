@@ -205,6 +205,12 @@ function DigitalCardScreen({ navigation, route }) {
       </View>
 
       <View style={styles.actions}>
+        <Button
+          variant="secondary"
+          onPress={() => navigation.navigate('EscanearQR')}
+        >
+          Escanear otro carnet
+        </Button>
         {!!profileUrl && (
           <Button variant="secondary" onPress={openProfileWeb}>
             Probar enlace del QR en navegador
