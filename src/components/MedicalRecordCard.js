@@ -1,3 +1,5 @@
+
+import { useState } from 'react'
 import {
   Pressable,
   StyleSheet,
@@ -5,34 +7,66 @@ import {
   View,
 } from 'react-native'
 
-import {
-  colors,
-  fonts,
-  radius,
-  shadows,
-} from '../theme'
+import { colors, fonts, shadows } from '../theme'
 
 const VARIANTS = {
   vaccine: {
-    background: colors.blue,
-    badge: colors.primaryDark,
-    icon: '✚',
-    label: 'Vacuna',
+    background: '#D7D798',
+    iconColor: '#59552C',
   },
-
   deworming: {
-    background: colors.yellowSoft,
-    badge: colors.orange,
-    icon: '◆',
-    label: 'Desparasitación',
+    background: '#F8BBA8',
+    iconColor: '#963F20',
   },
-
   consultation: {
-    background: colors.primary,
-    badge: colors.blueDark,
-    icon: '●',
-    label: 'Consulta',
+    background: '#FBE4B7',
+    iconColor: '#796226',
   },
+}
+
+// Iconos dibujados con React Native.
+// No se necesitan imagenes ni librerias adicionales.
+function MedicalIcon({ type }) {
+  if (type === 'deworming') {
+    return (
+      <View style={styles.clock}>
+        <View style={styles.clockHandOne} />
+        <View style={styles.clockHandTwo} />
+      </View>
+    )
+  }
+
+  if (type === 'consultation') {
+    return (
+      <View style={styles.stethoscope}>
+        <View style={styles.stethoTube} />
+        <View style={styles.stethoLeft} />
+        <View style={styles.stethoRight} />
+        <View style={styles.stethoStem} />
+        <View style={styles.stethoConnector} />
+        <View style={styles.stethoHead} />
+      </View>
+    )
+  }
+
+  return (
+    <Text style={styles.checkIcon}>
+      ✓
+    </Text>
+  )
+}
+
+// La web presenta las fechas como AAAA-MM-DD.
+function toWebDate(value) {
+  if (!value) return ''
+
+  const match = String(value).match(
+    /^(\d{2})\/(\d{2})\/(\d{4})$/
+  )
+
+  if (!match) return String(value)
+
+  return `${match[3]}-${match[2]}-${match[1]}`
 }
 
 function MedicalRecordCard({
@@ -44,150 +78,120 @@ function MedicalRecordCard({
   type = 'vaccine',
   onEdit,
 }) {
-  const variant =
-    VARIANTS[type] ||
-    VARIANTS.vaccine
+  const [expanded, setExpanded] = useState(false)
 
-  const darkText =
-    type === 'deworming'
+  const variant =
+    VARIANTS[type] || VARIANTS.vaccine
+
+  const hasDetails = Boolean(
+    nextDate || place || description
+  )
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor:
-            variant.background,
-        },
-      ]}
-    >
+    <View style={styles.card}>
+
       <View style={styles.top}>
-        <View
-          style={[
-            styles.icon,
-            {
-              backgroundColor:
-                variant.badge,
-            },
+
+        <Pressable
+          onPress={() => setExpanded((value) => !value)}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver detalles de ${title}`}
+          accessibilityState={{ expanded }}
+          style={({ pressed }) => [
+            styles.summary,
+            pressed && styles.pressed,
           ]}
         >
-          <Text style={styles.iconText}>
-            {variant.icon}
-          </Text>
-        </View>
-
-        <View style={styles.heading}>
-          <Text
+          <View
             style={[
-              styles.type,
-              darkText &&
-                styles.darkText,
+              styles.iconCircle,
+              { backgroundColor: variant.background },
             ]}
           >
-            {variant.label}
-          </Text>
+            <View
+              style={[
+                styles.iconContent,
+                { tintColor: variant.iconColor },
+              ]}
+            >
+              <MedicalIcon type={type} />
+            </View>
+          </View>
 
-          <Text
-            style={[
-              styles.title,
-              darkText &&
-                styles.darkText,
-            ]}
-          >
-            {title}
-          </Text>
-        </View>
+          <View style={styles.heading}>
+            <Text style={styles.title}>
+              {title}
+            </Text>
+
+            <Text style={styles.date}>
+              {toWebDate(date)}
+            </Text>
+          </View>
+        </Pressable>
 
         {!!onEdit && (
           <Pressable
             onPress={onEdit}
-            accessibilityLabel="Editar registro médico"
+            accessibilityRole="button"
+            accessibilityLabel={`Editar ${title}`}
             style={({ pressed }) => [
               styles.edit,
-              pressed &&
-                styles.pressed,
+              pressed && styles.pressed,
             ]}
           >
-            <Text
-              style={[
-                styles.editText,
-                darkText &&
-                  styles.editTextDark,
-              ]}
-            >
+            <Text style={styles.editText}>
               ✎
             </Text>
           </Pressable>
         )}
+
       </View>
 
-      <View style={styles.details}>
-        <Text
-          style={[
-            styles.detail,
-            darkText &&
-              styles.darkText,
-          ]}
+      {hasDetails && (
+        <Pressable
+          onPress={() => setExpanded((value) => !value)}
+          style={styles.detailsButton}
         >
-          <Text style={styles.bold}>
-            Fecha:{' '}
+          <Text style={styles.detailsButtonText}>
+            {expanded
+              ? 'Ocultar detalles  ▲'
+              : 'Ver detalles  ▼'}
           </Text>
+        </Pressable>
+      )}
 
-          {date}
-        </Text>
+      {expanded && hasDetails && (
+        <View style={styles.details}>
 
-        {!!nextDate && (
-          <Text
-            style={[
-              styles.detail,
-              darkText &&
-                styles.darkText,
-            ]}
-          >
-            <Text style={styles.bold}>
-              Próxima:{' '}
+          {!!nextDate && (
+            <Text style={styles.detail}>
+              <Text style={styles.bold}>
+                Próxima fecha:{' '}
+              </Text>
+              {nextDate}
             </Text>
+          )}
 
-            {nextDate}
-          </Text>
-        )}
-
-        {!!place && (
-          <Text
-            style={[
-              styles.detail,
-              darkText &&
-                styles.darkText,
-            ]}
-          >
-            <Text style={styles.bold}>
-              Lugar:{' '}
+          {!!place && (
+            <Text style={styles.detail}>
+              <Text style={styles.bold}>
+                Lugar:{' '}
+              </Text>
+              {place}
             </Text>
+          )}
 
-            {place}
-          </Text>
-        )}
-      </View>
+          {!!description && (
+            <View style={styles.descriptionBox}>
+              <Text style={styles.description}>
+                {description}
+              </Text>
+            </View>
+          )}
 
-      {!!description && (
-        <View
-          style={[
-            styles.descriptionBox,
-            darkText &&
-              styles.descriptionBoxLight,
-          ]}
-        >
-          <Text
-            style={[
-              styles.description,
-              darkText &&
-                styles.descriptionDark,
-            ]}
-          >
-            {description}
-          </Text>
         </View>
       )}
+
     </View>
   )
 }
@@ -195,149 +199,235 @@ function MedicalRecordCard({
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-
-    padding: 18,
-
-    borderRadius: 28,
-
-    ...shadows.card,
+    paddingHorizontal: 17,
+    paddingVertical: 17,
+    borderRadius: 27,
+    borderWidth: 1,
+    borderColor: '#F0EDE7',
+    backgroundColor: '#FBFAF8',
+    ...shadows.soft,
   },
 
   top: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-
-    gap: 12,
+    alignItems: 'center',
+    gap: 6,
   },
 
-  icon: {
-    width: 46,
-    height: 46,
+  summary: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+  },
 
-    flexShrink: 0,
-
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-
-    borderRadius: 15,
+    flexShrink: 0,
   },
 
-  iconText: {
-    color: colors.white,
-
-    fontFamily:
-      fonts.displayBold,
-    fontSize: 20,
+  iconContent: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   heading: {
     flex: 1,
-  },
-
-  type: {
-    marginBottom: 1,
-
-    color:
-      'rgba(255,255,255,0.80)',
-
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
+    minWidth: 0,
+    justifyContent: 'center',
   },
 
   title: {
-    color: colors.white,
+    color: colors.textDark,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 15,
+    lineHeight: 21,
+  },
 
-    fontFamily:
-      fonts.displayBold,
-    fontSize: 19,
-
-    lineHeight: 23,
+  date: {
+    marginTop: 1,
+    color: '#8E8985',
+    fontFamily: fonts.body,
+    fontSize: 12,
   },
 
   edit: {
-    width: 38,
-    height: 38,
-
+    width: 34,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   editText: {
-    color: colors.white,
-
+    color: '#8C8780',
     fontSize: 22,
   },
 
-  editTextDark: {
-    color: colors.text,
+  detailsButton: {
+    alignSelf: 'flex-end',
+    paddingTop: 9,
+    paddingHorizontal: 4,
+    paddingBottom: 2,
+  },
+
+  detailsButtonText: {
+    color: '#8B867B',
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
   },
 
   details: {
-    marginTop: 15,
-
-    gap: 4,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EBE6DE',
+    gap: 6,
   },
 
   detail: {
-    color:
-      'rgba(255,255,255,0.94)',
-
+    color: colors.text,
     fontFamily: fonts.body,
     fontSize: 12.5,
-
-    lineHeight: 18,
+    lineHeight: 19,
   },
 
   bold: {
-    fontFamily:
-      fonts.bodySemiBold,
-  },
-
-  darkText: {
-    color: colors.text,
+    fontFamily: fonts.bodySemiBold,
   },
 
   descriptionBox: {
-    marginTop: 13,
-
-    paddingHorizontal: 14,
+    marginTop: 6,
+    paddingHorizontal: 13,
     paddingVertical: 11,
-
-    borderRadius: 18,
-
-    backgroundColor:
-      'rgba(255,255,255,0.17)',
-  },
-
-  descriptionBoxLight: {
-    backgroundColor:
-      'rgba(255,255,255,0.50)',
+    borderRadius: 15,
+    backgroundColor: '#F4F0E9',
   },
 
   description: {
-    color: colors.white,
-
+    color: colors.text,
     fontFamily: fonts.body,
     fontSize: 12,
-
-    lineHeight: 18,
-  },
-
-  descriptionDark: {
-    color: colors.text,
+    lineHeight: 19,
   },
 
   pressed: {
-    opacity: 0.7,
+    opacity: 0.75,
+  },
 
-    transform: [
-      {
-        scale: 0.94,
-      },
-    ],
+  // VACUNAS: CHECK
+  checkIcon: {
+    color: '#59552C',
+    fontSize: 30,
+    fontWeight: 'bold',
+    lineHeight: 35,
+  },
+
+  // DESPARASITACION: RELOJ
+  clock: {
+    width: 23,
+    height: 23,
+    borderWidth: 2.5,
+    borderColor: '#963F20',
+    borderRadius: 12,
+    position: 'relative',
+  },
+
+  clockHandOne: {
+    position: 'absolute',
+    width: 2.5,
+    height: 8,
+    top: 3,
+    left: 8,
+    borderRadius: 2,
+    backgroundColor: '#963F20',
+  },
+
+  clockHandTwo: {
+    position: 'absolute',
+    width: 7,
+    height: 2.5,
+    top: 10,
+    left: 9,
+    borderRadius: 2,
+    backgroundColor: '#963F20',
+    transform: [{ rotate: '38deg' }],
+  },
+
+  // CONSULTAS: ESTETOSCOPIO
+  stethoscope: {
+    width: 30,
+    height: 30,
+    position: 'relative',
+  },
+
+  stethoTube: {
+    position: 'absolute',
+    top: 2,
+    left: 3,
+    width: 19,
+    height: 18,
+    borderLeftWidth: 2.5,
+    borderRightWidth: 2.5,
+    borderBottomWidth: 2.5,
+    borderColor: '#796226',
+    borderBottomLeftRadius: 11,
+    borderBottomRightRadius: 11,
+  },
+
+  stethoLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 1,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#796226',
+  },
+
+  stethoRight: {
+    position: 'absolute',
+    top: 0,
+    left: 19,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#796226',
+  },
+
+  stethoStem: {
+    position: 'absolute',
+    top: 19,
+    left: 12,
+    width: 2.5,
+    height: 6,
+    backgroundColor: '#796226',
+  },
+
+  stethoConnector: {
+    position: 'absolute',
+    top: 23,
+    left: 12,
+    width: 13,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#796226',
+  },
+
+  stethoHead: {
+    position: 'absolute',
+    top: 21,
+    right: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#796226',
   },
 })
 

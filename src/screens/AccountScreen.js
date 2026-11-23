@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -87,6 +88,8 @@ function AccountScreen() {
 
           <Pressable
             accessibilityLabel="Cambiar foto de perfil"
+            onPress={() => Alert.alert('Foto de perfil',
+              'La selección de fotografías se integrará en una etapa posterior.')}
             style={({ pressed }) => [
               styles.cameraButton,
               pressed && styles.pressed,
@@ -144,6 +147,8 @@ function AccountScreen() {
 
             <Pressable
               accessibilityLabel="Editar zona"
+              onPress={() => Alert.alert('Editar zona',
+                'Puedes escribir directamente en el campo Zona.')}
               style={({ pressed }) => [
                 styles.editButton,
                 pressed && styles.pressed,
@@ -169,7 +174,8 @@ function AccountScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Pressable>
+        <Pressable onPress={() => Alert.alert('Términos y condiciones',
+          'Documento informativo pendiente de integrar.')}>
           <Text style={styles.terms}>
             Términos y condiciones
           </Text>
@@ -189,15 +195,17 @@ function AccountScreen() {
         visible={deleteModalVisible}
         danger
         title="Eliminar Cuenta"
-        message="¿Estás seguro de que deseas eliminar tu cuenta? Tendrás que iniciar sesión nuevamente."
+        message="Esta es una demostración de confirmación. No se eliminará ninguna cuenta porque todavía no existe autenticación real."
         confirmText="Eliminar"
         cancelText="Cancelar"
         onCancel={() =>
           setDeleteModalVisible(false)
         }
-        onConfirm={() =>
+        onConfirm={() => {
           setDeleteModalVisible(false)
-        }
+          Alert.alert('Cuenta sin cambios',
+            'No se eliminó ninguna cuenta. La gestión real requiere backend de usuarios.')
+        }}
       />
     </ScreenContainer>
   )

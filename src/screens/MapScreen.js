@@ -1,9 +1,10 @@
-import {
-  useMemo,
-  useState,
-} from 'react'
+
+import { useCallback, useRef, useState } from 'react'
 
 import {
+  Animated,
+  PanResponder,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,388 +12,420 @@ import {
 } from 'react-native'
 
 import { Image } from 'expo-image'
+import { useFocusEffect } from '@react-navigation/native'
 
-import FilterTab
-  from '../components/FilterTab'
+import FilterTab from '../components/FilterTab'
+import MapMarker from '../components/MapMarker'
+import PlaceCard from '../components/PlaceCard'
+import SearchBar from '../components/SearchBar'
 
-import MapMarker
-  from '../components/MapMarker'
+import { API_URL } from '../config'
+import useApi from '../hooks/useApi'
+import { colors, fonts, shadows } from '../theme'
 
-import PlaceCard
-  from '../components/PlaceCard'
+const MAP_BACKGROUND = require('../../assets/map-background.svg')
 
-import SearchBar
-  from '../components/SearchBar'
-
-import {
-  colors,
-  fonts,
-  shadows,
-} from '../theme'
-
-const MAP_BACKGROUND =
-  require('../../assets/map-background.svg')
+// Ampliacion ligera para permitir movimiento sin bordes vacios.
+const MAP_SCALE = 1.35
 
 const CATEGORIES = [
-  {
-    id: 'all',
-    label: 'Todos',
-  },
-  {
-    id: 'park',
-    label: 'Parques',
-  },
-  {
-    id: 'veterinary',
-    label: 'Veterinarias',
-  },
-  {
-    id: 'petFriendly',
-    label: 'Pet Friendly',
-  },
+  { id: 'all', label: 'Todos' },
+  { id: 'park', label: 'Parques' },
+  { id: 'veterinary', label: 'Veterinarias' },
+  { id: 'petFriendly', label: 'Pet Friendly' },
 ]
 
 const PLACE_BADGES = {
   park: 'Parque Pet-Friendly',
-  veterinary:
-    'Atención para mascotas',
-  petFriendly:
-    'Lugar Pet-Friendly',
+  veterinary: 'Atención para mascotas',
+  petFriendly: 'Lugar Pet-Friendly',
 }
 
-/*
-  Datos temporales únicamente para C1.
-
-  En la fase de integración,
-  esta lista se reemplaza por
-  GET /api/lugares.
-*/
-const PREVIEW_PLACES = [
-  {
-    id: 1,
-    category: 'park',
-    type: 'park',
-
-    name: 'Parque Pet Friendly',
-
-    address:
-      'Zona Sur, La Paz',
-
-    schedule:
-      'Abierto todo el día',
-
-    description:
-      'Espacio abierto para pasear y compartir con tu mascota.',
-
-    position: {
-      top: '30%',
-      left: '25%',
-    },
-  },
-
-  {
-    id: 2,
-    category: 'veterinary',
-    type: 'veterinary',
-
-    name: 'Veterinaria Central',
-
-    address:
-      'Sopocachi, La Paz',
-
-    schedule:
-      '08:00 – 20:00',
-
-    description:
-      'Atención veterinaria y servicios para mascotas.',
-
-    position: {
-      top: '47%',
-      left: '68%',
-    },
-  },
-
-  {
-    id: 3,
-    category: 'petFriendly',
-    type: 'petFriendly',
-
-    name: 'Café Pet Friendly',
-
-    address:
-      'Miraflores, La Paz',
-
-    schedule:
-      '09:00 – 21:00',
-
-    description:
-      'Espacio donde puedes ingresar acompañado de tu mascota.',
-
-    position: {
-      top: '64%',
-      left: '39%',
-    },
-  },
-]
+function limit(value, minimum, maximum) {
+  return Math.max(minimum, Math.min(value, maximum))
+}
 
 function MapScreen() {
-  const [
-    searchQuery,
-    setSearchQuery,
-  ] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState('all')
+  const [selectedPlaceId, setSelectedPlaceId] = useState(null)
 
-  const [
-    activeCategory,
-    setActiveCategory,
-  ] = useState('all')
+  const firstFocus = useRef(true)
 
-  const [
-    selectedPlaceId,
-    setSelectedPlaceId,
-  ] = useState(1)
+  // ==========================================
+  // MOVIMIENTO DEL MAPA
+  // ==========================================
 
-  const places =
-    useMemo(() => {
-      const query =
-        searchQuery
-          .trim()
-          .toLowerCase()
+  const mapPosition = useRef(
+    new Animated.ValueXY({ x: 0, y: 0 })
+  ).current
 
-      return PREVIEW_PLACES.filter(
-        (place) => {
-          const matchesCategory =
-            activeCategory ===
-              'all' ||
-            place.category ===
-              activeCategory
+  const mapSize = useRef({
+    width: 0,
+    height: 0,
+  })
 
-          const matchesSearch =
-            !query ||
-            place.name
-              .toLowerCase()
-              .includes(query) ||
-            place.address
-              .toLowerCase()
-              .includes(query)
+  const currentPosition = useRef({
+    x: 0,
+    y: 0,
+  })
 
-          return (
-            matchesCategory &&
-            matchesSearch
-          )
+  const gestureStart = useRef({
+    x: 0,
+    y: 0,
+  })
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        return (
+          Math.abs(gesture.dx) > 7 ||
+          Math.abs(gesture.dy) > 7
+        )
+      },
+
+      onPanResponderGrant: () => {
+        gestureStart.current = {
+          ...currentPosition.current,
         }
-      )
-    }, [
-      activeCategory,
-      searchQuery,
-    ])
+      },
+
+      onPanResponderMove: (_, gesture) => {
+        // Limites para que no aparezcan
+        // espacios vacios alrededor del mapa.
+        const maxX = mapSize.current.width * 0.12
+        const maxY = mapSize.current.height * 0.12
+
+        const nextX = limit(
+          gestureStart.current.x + gesture.dx,
+          -maxX,
+          maxX
+        )
+
+        const nextY = limit(
+          gestureStart.current.y + gesture.dy,
+          -maxY,
+          maxY
+        )
+
+        currentPosition.current = {
+          x: nextX,
+          y: nextY,
+        }
+
+        mapPosition.setValue({
+          x: nextX,
+          y: nextY,
+        })
+      },
+
+      onPanResponderRelease: () => {
+        // El mapa permanece donde lo dejaste.
+      },
+
+      onPanResponderTerminate: () => {
+        // Conservamos la posicion alcanzada.
+      },
+    })
+  ).current
+
+  function handleMapLayout(event) {
+    const { width, height } = event.nativeEvent.layout
+
+    mapSize.current = {
+      width,
+      height,
+    }
+  }
+
+  function centerMap() {
+    currentPosition.current = {
+      x: 0,
+      y: 0,
+    }
+
+    Animated.spring(mapPosition, {
+      toValue: { x: 0, y: 0 },
+      useNativeDriver: true,
+      friction: 8,
+      tension: 45,
+    }).start()
+  }
+
+  // ==========================================
+  // CONSULTAS A SQLITE
+  // ==========================================
+
+  const queryParts = []
+
+  if (activeCategory !== 'all') {
+    queryParts.push(
+      `category=${encodeURIComponent(activeCategory)}`
+    )
+  }
+
+  if (searchQuery.trim()) {
+    queryParts.push(
+      `q=${encodeURIComponent(searchQuery.trim())}`
+    )
+  }
+
+  const url =
+    `${API_URL}/api/lugares` +
+    (queryParts.length
+      ? `?${queryParts.join('&')}`
+      : '')
+
+  const {
+    data,
+    loading,
+    error,
+    refetch,
+  } = useApi(url)
+
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false
+      } else {
+        refetch()
+      }
+    }, [refetch])
+  )
+
+  const validList = Array.isArray(data)
+  const places = validList ? data : []
 
   const selectedPlace =
     places.find(
-      (place) =>
-        place.id ===
-        selectedPlaceId
-    ) ??
-    places[0] ??
+      (place) => place.id === selectedPlaceId
+    ) ||
+    places[0] ||
     null
 
-  const handleCategoryChange =
-    (categoryId) => {
-      setActiveCategory(
-        categoryId
-      )
+  const visibleError =
+    error ||
+    (!loading && !validList
+      ? 'La API no devolvió una lista válida de lugares.'
+      : '')
 
-      setSelectedPlaceId(null)
-    }
-
-  const handleSearch =
-    (value) => {
-      setSearchQuery(value)
-      setSelectedPlaceId(null)
-    }
-
-  const handleClearSearch =
-    () => {
-      setSearchQuery('')
-      setSelectedPlaceId(null)
-    }
+  const selectedType =
+    selectedPlace?.type || selectedPlace?.category
 
   const panelColor =
-    selectedPlace?.type === 'park'
+    selectedType === 'park'
       ? colors.primary
-      : selectedPlace?.type ===
-          'veterinary'
+      : selectedType === 'veterinary'
         ? colors.blue
         : colors.text
 
+  function changeCategory(id) {
+    setActiveCategory(id)
+    setSelectedPlaceId(null)
+  }
+
+  function changeSearch(value) {
+    setSearchQuery(value)
+    setSelectedPlaceId(null)
+  }
+
+  // ==========================================
+  // INTERFAZ
+  // ==========================================
+
   return (
     <View style={styles.page}>
-      <View style={styles.canvas}>
-        <Image
-          source={MAP_BACKGROUND}
-          contentFit="cover"
-          style={styles.map}
-        />
+      <View
+        style={styles.canvas}
+        onLayout={handleMapLayout}
+      >
+
+        {/* MAPA QUE SE PUEDE ARRASTRAR */}
+
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={[
+            styles.movableMap,
+            {
+              transform: [
+                { translateX: mapPosition.x },
+                { translateY: mapPosition.y },
+                { scale: MAP_SCALE },
+              ],
+            },
+          ]}
+        >
+          <Image
+            source={MAP_BACKGROUND}
+            contentFit="cover"
+            style={styles.map}
+          />
+
+          {/* Los marcadores se mueven con el mapa */}
+
+          {!loading &&
+            !visibleError &&
+            places.map((place) => {
+              const selected =
+                place.id === selectedPlace?.id
+
+              return (
+                <View
+                  key={String(place.id)}
+                  style={[
+                    styles.markerSpot,
+                    {
+                      top:
+                        place.position?.top || '50%',
+                      left:
+                        place.position?.left || '50%',
+                    },
+                    selected &&
+                      styles.markerSelected,
+                  ]}
+                >
+                  <MapMarker
+                    type={
+                      place.type ||
+                      place.category
+                    }
+                    label={place.name}
+                    selected={selected}
+                    onPress={() =>
+                      setSelectedPlaceId(place.id)
+                    }
+                  />
+                </View>
+              )
+            })}
+        </Animated.View>
+
+        {/* CONTROLES FIJOS */}
 
         <View style={styles.controls}>
           <SearchBar
             value={searchQuery}
             placeholder="Buscar por nombre o dirección..."
-            onChangeText={
-              handleSearch
-            }
-            onClear={
-              handleClearSearch
-            }
+            onChangeText={changeSearch}
+            onClear={() => changeSearch('')}
           />
 
           <ScrollView
             horizontal
-            showsHorizontalScrollIndicator={
-              false
-            }
-            contentContainerStyle={
-              styles.categories
-            }
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categories}
           >
-            {CATEGORIES.map(
-              (category) => (
-                <FilterTab
-                  key={category.id}
-                  label={
-                    category.label
-                  }
-                  active={
-                    activeCategory ===
-                    category.id
-                  }
-                  onPress={() =>
-                    handleCategoryChange(
-                      category.id
-                    )
-                  }
-                />
-              )
-            )}
+            {CATEGORIES.map((category) => (
+              <FilterTab
+                key={category.id}
+                label={category.label}
+                active={
+                  activeCategory === category.id
+                }
+                onPress={() =>
+                  changeCategory(category.id)
+                }
+              />
+            ))}
           </ScrollView>
         </View>
 
-        {places.map(
-          (place) => {
-            const selected =
-              selectedPlace?.id ===
-              place.id
+        {/* BOTON PARA VOLVER AL CENTRO */}
 
-            return (
+        <Pressable
+          onPress={centerMap}
+          accessibilityRole="button"
+          accessibilityLabel="Centrar mapa"
+          style={({ pressed }) => [
+            styles.centerButton,
+            pressed && styles.centerButtonPressed,
+          ]}
+        >
+          <Text style={styles.centerButtonText}>
+            ⌖ Centrar
+          </Text>
+        </Pressable>
+
+        {/* CARGA Y ERRORES */}
+
+        {loading ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>
+              ⏳
+            </Text>
+
+            <Text style={styles.emptyText}>
+              Cargando lugares...
+            </Text>
+          </View>
+        ) : visibleError ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>
+              ⚠️
+            </Text>
+
+            <Text style={styles.emptyText}>
+              {visibleError}
+            </Text>
+
+            <Pressable
+              onPress={refetch}
+              accessibilityLabel="Reintentar carga de lugares"
+            >
+              <Text style={styles.retryText}>
+                Tocar para reintentar
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            {places.length === 0 && (
+              <View style={styles.empty}>
+                <Text style={styles.emptyIcon}>
+                  📍
+                </Text>
+
+                <Text style={styles.emptyText}>
+                  No se encontraron lugares para
+                  esta categoría o búsqueda.
+                </Text>
+              </View>
+            )}
+
+            {!!selectedPlace && (
               <View
-                key={place.id}
                 style={[
-                  styles.markerSpot,
+                  styles.placePanel,
                   {
-                    top:
-                      place.position
-                        .top,
-
-                    left:
-                      place.position
-                        .left,
+                    backgroundColor: panelColor,
                   },
-
-                  selected &&
-                    styles.markerSelected,
                 ]}
               >
-                <MapMarker
-                  type={place.type}
-                  label={place.name}
-                  selected={
-                    selected
-                  }
-                  onPress={() =>
-                    setSelectedPlaceId(
-                      place.id
-                    )
-                  }
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    ✓{' '}
+                    {PLACE_BADGES[selectedType] ||
+                      'Lugar para mascotas'}
+                  </Text>
+                </View>
+
+                <Text style={styles.placeTitle}>
+                  {selectedPlace.name}
+                </Text>
+
+                <PlaceCard
+                  embedded
+                  type={selectedType}
+                  name={selectedPlace.name}
+                  address={selectedPlace.address}
+                  schedule={selectedPlace.schedule}
+                  description={selectedPlace.description}
                 />
               </View>
-            )
-          }
-        )}
-
-        {places.length === 0 && (
-          <View style={styles.empty}>
-            <Text
-              style={styles.emptyIcon}
-            >
-              📍
-            </Text>
-
-            <Text
-              style={styles.emptyText}
-            >
-              No se encontraron
-              lugares para esta
-              categoría o búsqueda.
-            </Text>
-          </View>
-        )}
-
-        {!!selectedPlace && (
-          <View
-            style={[
-              styles.placePanel,
-              {
-                backgroundColor:
-                  panelColor,
-              },
-            ]}
-          >
-            <View
-              style={
-                styles.badge
-              }
-            >
-              <Text
-                style={
-                  styles.badgeText
-                }
-              >
-                ✓{' '}
-                {
-                  PLACE_BADGES[
-                    selectedPlace
-                      .type
-                  ]
-                }
-              </Text>
-            </View>
-
-            <Text
-              style={
-                styles.placeTitle
-              }
-            >
-              {selectedPlace.name}
-            </Text>
-
-            <PlaceCard
-              embedded
-              type={
-                selectedPlace.type
-              }
-              name={
-                selectedPlace.name
-              }
-              address={
-                selectedPlace.address
-              }
-              schedule={
-                selectedPlace.schedule
-              }
-              description={
-                selectedPlace.description
-              }
-            />
-          </View>
+            )}
+          </>
         )}
       </View>
     </View>
@@ -402,61 +435,77 @@ function MapScreen() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-
     width: '100%',
-
-    backgroundColor:
-      '#e8ecf0',
+    backgroundColor: '#e8ecf0',
   },
 
   canvas: {
     position: 'relative',
-
     flex: 1,
-
     width: '100%',
-
     overflow: 'hidden',
+  },
+
+  movableMap: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
   },
 
   map: {
     ...StyleSheet.absoluteFillObject,
-
     width: '100%',
     height: '100%',
   },
 
   controls: {
     position: 'absolute',
-
     top: 14,
     left: 14,
     right: 14,
-
     zIndex: 20,
-
     gap: 10,
   },
 
   categories: {
     gap: 8,
-
     paddingRight: 12,
     paddingBottom: 4,
   },
 
+  centerButton: {
+    position: 'absolute',
+    top: 112,
+    right: 14,
+    zIndex: 21,
+
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+
+    borderRadius: 16,
+
+    backgroundColor:
+      'rgba(255,255,255,0.96)',
+
+    ...shadows.soft,
+  },
+
+  centerButtonPressed: {
+    opacity: 0.75,
+  },
+
+  centerButtonText: {
+    color: colors.text,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+  },
+
   markerSpot: {
     position: 'absolute',
-
     zIndex: 10,
 
     transform: [
-      {
-        translateX: -23,
-      },
-      {
-        translateY: -46,
-      },
+      { translateX: -23 },
+      { translateY: -46 },
     ],
   },
 
@@ -466,13 +515,13 @@ const styles = StyleSheet.create({
 
   empty: {
     position: 'absolute',
-
     top: '42%',
     left: 24,
     right: 24,
 
-    padding: 18,
+    zIndex: 22,
 
+    padding: 18,
     alignItems: 'center',
 
     borderRadius: 24,
@@ -485,23 +534,19 @@ const styles = StyleSheet.create({
 
   emptyIcon: {
     marginBottom: 6,
-
     fontSize: 27,
   },
 
   emptyText: {
     color: colors.text,
-
     fontFamily: fonts.body,
     fontSize: 13,
-
     lineHeight: 19,
     textAlign: 'center',
   },
 
   placePanel: {
     position: 'absolute',
-
     left: 0,
     right: 0,
     bottom: 0,
@@ -515,14 +560,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
 
-    shadowColor:
-      colors.black,
-
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: -7,
     },
-
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 8,
@@ -530,36 +572,33 @@ const styles = StyleSheet.create({
 
   badge: {
     alignSelf: 'center',
-
     marginBottom: 10,
-
     paddingHorizontal: 14,
     paddingVertical: 4,
-
     borderRadius: 999,
-
-    backgroundColor:
-      '#bbf7d0',
+    backgroundColor: '#bbf7d0',
   },
 
   badgeText: {
     color: '#14532d',
-
-    fontFamily:
-      fonts.bodyBold,
+    fontFamily: fonts.bodyBold,
     fontSize: 10.5,
   },
 
   placeTitle: {
     marginBottom: 8,
-
     color: colors.white,
-
-    fontFamily:
-      fonts.displayBold,
+    fontFamily: fonts.displayBold,
     fontSize: 21,
-
     textAlign: 'center',
+  },
+
+  retryText: {
+    paddingTop: 12,
+    color: colors.blueDark,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    fontFamily: fonts.bodySemiBold,
   },
 })
 

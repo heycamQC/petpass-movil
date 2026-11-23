@@ -5,6 +5,8 @@ import MainScreenLayout from '../layouts/MainScreenLayout'
 
 import OnboardingScreen from '../screens/OnboardingScreen'
 import LoginScreen from '../screens/LoginScreen'
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen'
+import RegisterTutorScreen from '../screens/RegisterTutorScreen'
 import HomeScreen from '../screens/HomeScreen'
 import PetsScreen from '../screens/PetsScreen'
 import RegisterPetScreen from '../screens/RegisterPetScreen'
@@ -57,6 +59,14 @@ function AppNavigator() {
         <Stack.Screen
           name="Login"
           component={LoginScreen}
+        />
+        <Stack.Screen
+          name="RecuperarContrasena"
+          component={ForgotPasswordScreen}
+        />
+        <Stack.Screen
+          name="RegistroTutor"
+          component={RegisterTutorScreen}
         />
 
         <Stack.Screen name="Home">

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 import {
   Modal,
+  ScrollView,
   Pressable,
   StyleSheet,
   Text,
@@ -9,12 +10,17 @@ import {
 } from 'react-native'
 
 import { Image } from 'expo-image'
+import { useFocusEffect } from '@react-navigation/native'
 import {
   SafeAreaView,
 } from 'react-native-safe-area-context'
 
-import Button
-  from '../components/Button'
+import Button from '../components/Button'
+import Message from '../components/Message'
+import ScreenContainer from '../components/ScreenContainer'
+import { API_URL } from '../config'
+import useApi from '../hooks/useApi'
+import { getPetPhotoSource } from '../utils/petPhoto'
 
 import OnboardingConfetti
   from '../components/decorative/OnboardingConfetti'
@@ -26,33 +32,46 @@ import {
   shadows,
 } from '../theme'
 
-const PUG =
-  require('../../assets/pug-avatar.svg')
+function PublicPetProfileScreen({ navigation, route }) {
+  const petId = Number(route.params?.id)
+  const validId = Number.isInteger(petId) && petId > 0
+  const url = validId ? `${API_URL}/api/mascotas/${petId}` : null
+  const { data: pet, loading, error, refetch } = useApi(url)
+  const firstFocus = useRef(true)
+  const [isCalling, setIsCalling] = useState(false)
+  const [locationModalVisible, setLocationModalVisible] = useState(false)
+  const [successModalVisible, setSuccessModalVisible] = useState(false)
 
-const PREVIEW_PET = {
-  id: 1,
-  name: 'Toby',
-  photo: PUG,
-  species: 'Perro',
-  breed: 'Pug',
-  status: 'lost',
-}
+  useFocusEffect(useCallback(() => {
+    if (firstFocus.current) firstFocus.current = false
+    else if (validId) refetch()
+  }, [refetch, validId]))
 
-function PublicPetProfileScreen() {
-  const [isCalling, setIsCalling] =
-    useState(false)
+  if (!validId) {
+    return (
+      <ScreenContainer>
+        <Message error="No se recibió un ID válido para el perfil público." />
+        <Button variant="secondary" onPress={() => navigation.goBack()}>
+          Volver al carnet
+        </Button>
+      </ScreenContainer>
+    )
+  }
 
-  const [
-    locationModalVisible,
-    setLocationModalVisible,
-  ] = useState(false)
+  if (loading || error || !pet) {
+    return (
+      <ScreenContainer>
+        <Message loading={loading} error={error || (!loading ? 'No se encontró la mascota.' : '')} />
+        {!loading && <Button variant="secondary" onPress={refetch}>Reintentar</Button>}
+        <Button variant="secondary" onPress={() => navigation.goBack()}>
+          Volver al carnet
+        </Button>
+      </ScreenContainer>
+    )
+  }
 
-  const [
-    successModalVisible,
-    setSuccessModalVisible,
-  ] = useState(false)
-
-  const pet = PREVIEW_PET
+  const photoSource = getPetPhotoSource(pet.photo)
+  const photoFallback = pet.species === 'Gato' ? '🐱' : '🐶'
 
   const handleAllowLocation = () => {
     setLocationModalVisible(false)
@@ -63,7 +82,7 @@ function PublicPetProfileScreen() {
     return (
       <SafeAreaView
         edges={['top', 'bottom']}
-        style={styles.page}
+        style={styles.callPage}
       >
         <View style={styles.confetti}>
           <OnboardingConfetti />
@@ -71,11 +90,11 @@ function PublicPetProfileScreen() {
 
         <View style={styles.callCard}>
           <View style={styles.callAvatar}>
-            <Image
-              source={pet.photo}
-              contentFit="cover"
-              style={styles.photo}
-            />
+            {photoSource ? (
+              <Image source={photoSource} contentFit="cover" style={styles.photo} />
+            ) : (
+              <Text style={styles.photoFallbackText}>{photoFallback}</Text>
+            )}
           </View>
 
           <Text style={styles.callTitle}>
@@ -83,12 +102,15 @@ function PublicPetProfileScreen() {
           </Text>
 
           <Text style={styles.callSubtitle}>
-            Contactando al tutor de{' '}
+            Vista previa de llamada para{' '}
             <Text style={styles.bold}>
               {pet.name}
             </Text>
           </Text>
 
+          <Text style={styles.demoNote}>
+            Demostración: no se realiza ninguna llamada telefónica.
+          </Text>
           <View style={styles.callControls}>
             <View style={styles.callControl}>
               <View style={styles.callCircle}>
@@ -147,22 +169,23 @@ function PublicPetProfileScreen() {
   }
 
   return (
-    <SafeAreaView
-      edges={['top', 'bottom']}
-      style={styles.page}
-    >
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safePage}>
+      <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.confetti}>
         <OnboardingConfetti />
       </View>
 
       <View style={styles.card}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backLink}>
+          <Text style={styles.backText}>← Volver al carnet</Text>
+        </Pressable>
         <View style={styles.info}>
           <View style={styles.photoContainer}>
-            <Image
-              source={pet.photo}
-              contentFit="cover"
-              style={styles.photo}
-            />
+            {photoSource ? (
+              <Image source={photoSource} contentFit="cover" style={styles.photo} />
+            ) : (
+              <Text style={styles.photoFallbackText}>{photoFallback}</Text>
+            )}
           </View>
 
           <Text style={styles.title}>
@@ -212,7 +235,7 @@ function PublicPetProfileScreen() {
                 setLocationModalVisible(true)
               }
             >
-              Enviar Alerta GPS
+              Vista previa de GPS
             </Button>
 
             <Pressable
@@ -225,7 +248,7 @@ function PublicPetProfileScreen() {
               ]}
             >
               <Text style={styles.callButtonText}>
-                Llamada de emergencia
+                Vista previa de llamada
               </Text>
             </Pressable>
           </View>
@@ -276,8 +299,8 @@ function PublicPetProfileScreen() {
               </Text>
 
               <Text style={styles.modalInnerText}>
-                ¿Permitir que PetPass acceda
-                a tu ubicación?
+                El GPS real aún no está conectado.
+                ¿Quieres ver la demostración?
               </Text>
             </View>
 
@@ -286,7 +309,7 @@ function PublicPetProfileScreen() {
               style={styles.modalAction}
             >
               <Text style={styles.modalActionText}>
-                Aceptar
+                Ver demostración
               </Text>
             </Pressable>
 
@@ -314,7 +337,7 @@ function PublicPetProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.successModal}>
             <Text style={styles.modalTitle}>
-              ¡Alerta enviada!
+              Vista previa de GPS
             </Text>
 
             <View style={styles.modalInner}>
@@ -323,9 +346,8 @@ function PublicPetProfileScreen() {
               </Text>
 
               <Text style={styles.modalInnerText}>
-                El tutor ya tiene la ubicación.
-                Por favor quédate con la mascota
-                unos minutos.
+                No se obtuvo ni envió una ubicación.
+                Esta función se integrará en una etapa posterior.
               </Text>
             </View>
 
@@ -342,13 +364,25 @@ function PublicPetProfileScreen() {
           </View>
         </View>
       </Modal>
+      </ScrollView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
+  safePage: { flex: 1, backgroundColor: colors.background },
+  callPage: { flex: 1, paddingHorizontal: 20, paddingVertical: 28,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    backgroundColor: colors.background },
+  backLink: { alignSelf: 'flex-start', paddingVertical: 6 },
+  backText: { color: colors.textDark, fontFamily: fonts.bodySemiBold, fontSize: 13 },
+  photoFallbackText: { textAlign: 'center', textAlignVertical: 'center', fontSize: 62,
+    height: '100%', paddingTop: 36 },
+  demoNote: { color: colors.text, textAlign: 'center', fontFamily: fonts.bodyMedium,
+    fontSize: 12, marginVertical: 12 },
+
   page: {
-    flex: 1,
+    flexGrow: 1,
 
     paddingHorizontal: 20,
     paddingVertical: 28,

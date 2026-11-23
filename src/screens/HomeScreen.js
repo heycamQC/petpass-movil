@@ -1,19 +1,15 @@
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { useCallback, useRef } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
+import { useFocusEffect } from '@react-navigation/native'
 
+import Button from '../components/Button'
+import Message from '../components/Message'
 import ScreenContainer from '../components/ScreenContainer'
-
-import {
-  colors,
-  fonts,
-  radius,
-  shadows,
-  spacing,
-} from '../theme'
+import { API_URL } from '../config'
+import useApi from '../hooks/useApi'
+import { getPetPhotoSource } from '../utils/petPhoto'
+import { colors, fonts, radius, shadows, spacing } from '../theme'
 
 function PawDecoration() {
   return (
@@ -22,69 +18,121 @@ function PawDecoration() {
       <View style={[styles.pawToe, styles.toe2]} />
       <View style={[styles.pawToe, styles.toe3]} />
       <View style={[styles.pawToe, styles.toe4]} />
-
       <View style={styles.pawPad} />
     </View>
   )
 }
 
 function HomeScreen({ navigation }) {
+  const { data, loading, error, refetch } = useApi(`${API_URL}/api/mascotas`)
+  const firstFocus = useRef(true)
+
+  // Actualizar al volver de registrar/editar/eliminar desde otras pantallas.
+  useFocusEffect(useCallback(() => {
+    if (firstFocus.current) {
+      firstFocus.current = false
+    } else {
+      refetch()
+    }
+  }, [refetch]))
+
+  const pets = Array.isArray(data) ? data : []
+
   return (
     <ScreenContainer>
       <View style={styles.welcome}>
-        <Text style={styles.welcomeTitle}>
-          Hola, Usuario!
-        </Text>
-
+        <Text style={styles.welcomeTitle}>Hola, Usuario!</Text>
         <PawDecoration />
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          Mis Mascotas
-        </Text>
+        <Text style={styles.sectionTitle}>Mis Mascotas</Text>
 
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyIcon}>
-            🐾
-          </Text>
+        {loading ? (
+          <View style={styles.emptyCard}><Message loading /></View>
+        ) : error ? (
+          <View style={styles.emptyCard}>
+            <Message error={error} />
+            <Button variant="secondary" onPress={refetch}>Reintentar</Button>
+          </View>
+        ) : !Array.isArray(data) ? (
+          <View style={styles.emptyCard}>
+            <Message error="La API no devolvió una lista válida de mascotas." />
+            <Button variant="secondary" onPress={refetch}>Reintentar</Button>
+          </View>
+        ) : pets.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>🐾</Text>
+            <Text style={styles.emptyTitle}>Aún no tienes mascotas registradas</Text>
+            <Text style={styles.emptyText}>
+              Puedes registrar una mascota desde tu celular para ver su carnet e historial.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.petList}>
+            <Text style={styles.listHint}>
+              {pets.length} mascota{pets.length === 1 ? '' : 's'} registrada{pets.length === 1 ? '' : 's'}
+            </Text>
+            {pets.map((pet) => {
+              const photo = getPetPhotoSource(pet.photo)
+              return (
+                <Pressable
+                  key={String(pet.id)}
+                  onPress={() => navigation.navigate('Carnet', { id: pet.id })}
+                  accessibilityLabel={`Ver carnet de ${pet.name}`}
+                  style={({ pressed }) => [styles.petItem, pressed && styles.petActionPressed]}
+                >
+                  <View style={styles.petThumb}>
+                    {photo ? (
+                      <Image source={photo} contentFit="cover" style={styles.petThumbImage} />
+                    ) : (
+                      <Text style={styles.petThumbEmoji}>{pet.species === 'Gato' ? '🐱' : '🐶'}</Text>
+                    )}
+                  </View>
 
-          <Text style={styles.emptyTitle}>
-            Tus mascotas en PetPass
-          </Text>
+                  <View style={styles.petItemText}>
 
-          <Text style={styles.emptyText}>
-            Aquí podrás consultar rápidamente
-            sus perfiles, carnet digital e
-            historial.
-          </Text>
-        </View>
+                    <Text style={styles.petItemName}>
+                      {pet.name}
+                    </Text>
+
+                    <Text style={styles.petItemMeta}>
+                      {pet.species || 'Mascota'} · {pet.breed || 'Raza no registrada'}
+                    </Text>
+
+                    {pet.status === 'lost' && (
+                      <View style={styles.lostBadge}>
+                        <Text style={styles.lostBadgeText}>
+                          ⚠ MASCOTA PERDIDA
+                        </Text>
+                      </View>
+                    )}
+
+                    <Text style={styles.petItemLink}>
+                      Ver carnet digital ›
+                    </Text>
+
+                  </View>
+
+                </Pressable>
+              )
+            })}
+          </View>
+        )}
 
         <Pressable
-          onPress={() =>
-            navigation.navigate('Mascotas')
-          }
-          style={({ pressed }) => [
-            styles.petAction,
-            pressed && styles.petActionPressed,
-          ]}
+          onPress={() => navigation.navigate('RegistrarMascota')}
+          style={({ pressed }) => [styles.petAction, pressed && styles.petActionPressed]}
         >
-          <View style={styles.petActionIcon}>
-            <Text style={styles.plus}>
-              +
-            </Text>
-          </View>
-
+          <View style={styles.petActionIcon}><Text style={styles.plus}>+</Text></View>
           <View style={styles.petActionText}>
-            <Text style={styles.petActionTitle}>
-              Mis mascotas
-            </Text>
-
-            <Text style={styles.petActionSubtitle}>
-              Consulta sus perfiles y carnet
-            </Text>
+            <Text style={styles.petActionTitle}>Registrar mascota</Text>
+            <Text style={styles.petActionSubtitle}>Crea su carnet en PetPass</Text>
           </View>
         </Pressable>
+        <Button variant="secondary" onPress={() => navigation.navigate('Mascotas')}>
+          Ver todas mis mascotas
+        </Button>
       </View>
     </ScreenContainer>
   )
@@ -317,6 +365,24 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
+lostBadge: {
+  alignSelf: 'flex-start',
+  backgroundColor: '#FDE8E5',
+  borderColor: '#E6AAA0',
+  borderWidth: 1,
+  borderRadius: 12,
+  paddingHorizontal: 10,
+  paddingVertical: 5,
+  marginTop: 4,
+},
+
+lostBadgeText: {
+  color: '#A73A2D',
+  fontFamily: fonts.bodySemiBold,
+  fontSize: 11,
+},
+
+
   petActionSubtitle: {
     color: colors.white,
 
@@ -325,6 +391,19 @@ const styles = StyleSheet.create({
 
     opacity: 0.95,
   },
+  petList: { gap: 12 },
+  listHint: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
+  petItem: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12,
+    backgroundColor: colors.white, borderRadius: 22, borderWidth: 1, borderColor: colors.border,
+    ...shadows.soft },
+  petThumb: { width: 68, height: 68, borderRadius: 18, overflow: 'hidden',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
+  petThumbImage: { width: '100%', height: '100%' },
+  petThumbEmoji: { fontSize: 30 },
+  petItemText: { flex: 1, gap: 2 },
+  petItemName: { color: colors.textDark, fontFamily: fonts.displayBold, fontSize: 17 },
+  petItemMeta: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },
+  petItemLink: { color: colors.orange, fontFamily: fonts.bodySemiBold, fontSize: 12 },
 })
 
 export default HomeScreen
