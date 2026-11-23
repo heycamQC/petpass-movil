@@ -85,7 +85,7 @@ function LoginScreen({ navigation }) {
             />
 
             <Pressable
-              disabled
+              onPress={() => navigation.navigate('RecuperarContrasena')}
               style={styles.textAction}
             >
               <Text style={styles.textActionText}>
@@ -98,7 +98,7 @@ function LoginScreen({ navigation }) {
             </Button>
 
             <Pressable
-              disabled
+              onPress={() => navigation.navigate('RegistroTutor')}
               style={styles.registerAction}
             >
               <Text style={styles.registerText}>

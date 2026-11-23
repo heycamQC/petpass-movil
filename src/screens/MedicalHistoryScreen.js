@@ -1,9 +1,9 @@
+
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import Button from '../components/Button'
-import FilterTab from '../components/FilterTab'
 import FormField from '../components/FormField'
 import MedicalRecordCard from '../components/MedicalRecordCard'
 import Message from '../components/Message'
@@ -79,6 +79,7 @@ function MedicalHistoryScreen({ navigation, route }) {
     records.filter((record) => record.type === activeFilter),
     [records, activeFilter]
   )
+
   const activeFilterLabel = FILTERS.find(
     (filter) => filter.id === activeFilter
   )?.label || ''
@@ -137,16 +138,23 @@ function MedicalHistoryScreen({ navigation, route }) {
       setFormError('El título es obligatorio.')
       return
     }
+
     if (!date) {
       setFormError('La fecha es obligatoria.')
       return
     }
+
     if (!isValidISODate(date)) {
-      setFormError('Usa una fecha real con formato AAAA-MM-DD. Ejemplo: 2026-11-22.')
+      setFormError(
+        'Usa una fecha real con formato AAAA-MM-DD. Ejemplo: 2026-11-22.'
+      )
       return
     }
+
     if (nextDate && !isValidISODate(nextDate)) {
-      setFormError('La próxima fecha debe tener formato AAAA-MM-DD o quedar vacía.')
+      setFormError(
+        'La próxima fecha debe tener formato AAAA-MM-DD o quedar vacía.'
+      )
       return
     }
 
@@ -168,8 +176,13 @@ function MedicalHistoryScreen({ navigation, route }) {
     savingLock.current = true
     setSaving(true)
     setFormError('')
+
     try {
-      await sendMedicalRequest(path, editing ? 'PUT' : 'POST', payload)
+      await sendMedicalRequest(
+        path,
+        editing ? 'PUT' : 'POST',
+        payload
+      )
       resetForm()
       refetch() // El registro recién guardado se lee desde la API.
     } catch (requestError) {
@@ -184,7 +197,11 @@ function MedicalHistoryScreen({ navigation, route }) {
     return (
       <ScreenContainer>
         <Message error="No se recibió un ID válido de mascota." />
-        <Button variant="secondary" onPress={() => navigation.goBack()}>
+
+        <Button
+          variant="secondary"
+          onPress={() => navigation.goBack()}
+        >
           Volver a mascotas
         </Button>
       </ScreenContainer>
@@ -195,17 +212,37 @@ function MedicalHistoryScreen({ navigation, route }) {
     return (
       <ScreenContainer>
         <View style={styles.heading}>
-          <Text style={styles.title}>Historial Médico</Text>
-          <Text style={styles.subtitle}>{petName}</Text>
+          <Text style={styles.title}>
+            Historial Médico
+          </Text>
+
+          <Text style={styles.subtitle}>
+            {petName}
+          </Text>
         </View>
+
         <Message
           loading={loading}
-          error={error || (!loading && 'La API no devolvió una lista válida de registros.')}
+          error={
+            error ||
+            (!loading &&
+              'La API no devolvió una lista válida de registros.')
+          }
         />
+
         {!loading && (
           <View style={styles.formActions}>
-            <Button variant="secondary" onPress={refetch}>Reintentar</Button>
-            <Button variant="secondary" onPress={() => navigation.goBack()}>
+            <Button
+              variant="secondary"
+              onPress={refetch}
+            >
+              Reintentar
+            </Button>
+
+            <Button
+              variant="secondary"
+              onPress={() => navigation.goBack()}
+            >
               Volver a mascotas
             </Button>
           </View>
@@ -217,33 +254,72 @@ function MedicalHistoryScreen({ navigation, route }) {
   return (
     <ScreenContainer>
       <View style={styles.heading}>
-        <Text style={styles.title}>Historial Médico</Text>
-        <Text style={styles.subtitle}>{petName}</Text>
+        <Text style={styles.title}>
+          Historial Médico
+        </Text>
+
+        <Text style={styles.subtitle}>
+          {petName}
+        </Text>
       </View>
 
+      {/* FILTROS EN UNA SOLA FILA */}
+
       <View style={styles.filters}>
-        {FILTERS.map((filter) => (
-          <FilterTab
-            key={filter.id}
-            label={filter.label}
-            active={activeFilter === filter.id}
-            onPress={() => handleFilterChange(filter.id)}
-          />
-        ))}
+        {FILTERS.map((filter) => {
+          const active = activeFilter === filter.id
+
+          return (
+            <Pressable
+              key={filter.id}
+              onPress={() => handleFilterChange(filter.id)}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              style={({ pressed }) => [
+                styles.filterButton,
+                filter.id === 'deworming' &&
+                  styles.filterButtonWide,
+                active && styles.filterButtonActive,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+                style={[
+                  styles.filterText,
+                  active && styles.filterTextActive,
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </Pressable>
+          )
+        })}
       </View>
 
       <View style={styles.sectionHeader}>
         <View>
-          <Text style={styles.sectionTitle}>{activeFilterLabel}</Text>
+          <Text style={styles.sectionTitle}>
+            {activeFilterLabel}
+          </Text>
+
           <Text style={styles.sectionSubtitle}>
-            {visibleRecords.length} registro{visibleRecords.length === 1 ? '' : 's'}
+            {visibleRecords.length} registro
+            {visibleRecords.length === 1 ? '' : 's'}
           </Text>
         </View>
+
         <Pressable
           onPress={handleNewRecord}
           disabled={saving}
           accessibilityLabel="Agregar registro médico"
-          style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.addButton,
+            pressed && styles.pressed,
+          ]}
         >
           <Text style={styles.addSymbol}>+</Text>
         </Pressable>
@@ -252,9 +328,14 @@ function MedicalHistoryScreen({ navigation, route }) {
       {medicalFormOpen && (
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>
-            {editingRecordId !== null ? 'Editar registro' : 'Nuevo registro'}
+            {editingRecordId !== null
+              ? 'Editar registro'
+              : 'Nuevo registro'}
           </Text>
-          <Text style={styles.formSubtitle}>{activeFilterLabel}</Text>
+
+          <Text style={styles.formSubtitle}>
+            {activeFilterLabel}
+          </Text>
 
           <View style={styles.form}>
             <FormField
@@ -263,24 +344,28 @@ function MedicalHistoryScreen({ navigation, route }) {
               onChangeText={handleChange('title')}
               placeholder="Ej. Vacuna antirrábica"
             />
+
             <FormField
               label="Fecha * (AAAA-MM-DD)"
               value={formData.date}
               onChangeText={handleChange('date')}
               placeholder="Ej. 2026-11-22"
             />
+
             <FormField
               label="Próxima fecha (AAAA-MM-DD)"
               value={formData.nextDate}
               onChangeText={handleChange('nextDate')}
               placeholder="Opcional: 2027-11-22"
             />
+
             <FormField
               label="Lugar"
               value={formData.place}
               onChangeText={handleChange('place')}
               placeholder="Veterinaria"
             />
+
             <FormField
               label="Descripción"
               value={formData.description}
@@ -288,21 +373,32 @@ function MedicalHistoryScreen({ navigation, route }) {
               placeholder="Notas del registro"
               multiline
             />
-            {!!formError && <Message error={formError} />}
+
+            {!!formError && (
+              <Message error={formError} />
+            )}
           </View>
 
           <View style={styles.formActions}>
-            <Button onPress={handleSave} disabled={saving}>
-              {saving ? 'Guardando...' : editingRecordId !== null
-                ? 'Guardar cambios'
-                : 'Guardar registro'}
+            <Button
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving
+                ? 'Guardando...'
+                : editingRecordId !== null
+                  ? 'Guardar cambios'
+                  : 'Guardar registro'}
             </Button>
+
             <Pressable
               onPress={resetForm}
               disabled={saving}
               style={styles.cancelButton}
             >
-              <Text style={styles.cancelText}>Cancelar</Text>
+              <Text style={styles.cancelText}>
+                Cancelar
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -326,9 +422,15 @@ function MedicalHistoryScreen({ navigation, route }) {
           ) : (
             <View style={styles.emptyState}>
               <View style={styles.emptyIcon}>
-                <Text style={styles.emptySymbol}>+</Text>
+                <Text style={styles.emptySymbol}>
+                  +
+                </Text>
               </View>
-              <Text style={styles.emptyTitle}>Sin registros</Text>
+
+              <Text style={styles.emptyTitle}>
+                Sin registros
+              </Text>
+
               <Text style={styles.emptyText}>
                 Todavía no hay registros en esta categoría.
               </Text>
@@ -347,57 +449,78 @@ const styles = StyleSheet.create({
 
   title: {
     color: colors.text,
-
-    fontFamily:
-      fonts.displayBold,
+    fontFamily: fonts.displayBold,
     fontSize: 29,
-
     lineHeight: 35,
   },
 
   subtitle: {
     marginTop: 2,
-
     color: colors.orange,
-
-    fontFamily:
-      fonts.bodySemiBold,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
   },
 
+  // FILTROS EN UNA SOLA FILA
+
   filters: {
+    width: '100%',
     marginBottom: 26,
-
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    gap: 6,
+  },
 
-    gap: 8,
+  filterButton: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 46,
+    paddingHorizontal: 3,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.orange,
+    borderRadius: radius.pill,
+    backgroundColor: colors.background,
+  },
+
+  filterButtonWide: {
+    flex: 1.7,
+  },
+
+  filterButtonActive: {
+    backgroundColor: colors.orange,
+  },
+
+  filterText: {
+    color: colors.orange,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+
+  filterTextActive: {
+    color: colors.white,
   },
 
   sectionHeader: {
     marginBottom: 15,
-
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent:
-      'space-between',
-
+    justifyContent: 'space-between',
     gap: spacing.md,
   },
 
   sectionTitle: {
     color: colors.text,
-
-    fontFamily:
-      fonts.displayBold,
+    fontFamily: fonts.displayBold,
     fontSize: 21,
   },
 
   sectionSubtitle: {
     marginTop: 1,
-
     color: colors.muted,
-
     fontFamily: fonts.body,
     fontSize: 11.5,
   },
@@ -405,27 +528,18 @@ const styles = StyleSheet.create({
   addButton: {
     width: 46,
     height: 46,
-
     alignItems: 'center',
     justifyContent: 'center',
-
     borderRadius: radius.pill,
-
-    backgroundColor:
-      colors.orange,
-
+    backgroundColor: colors.orange,
     ...shadows.orange,
   },
 
   addSymbol: {
     marginTop: -3,
-
     color: colors.white,
-
-    fontFamily:
-      fonts.bodySemiBold,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 29,
-
     lineHeight: 32,
   },
 
@@ -435,34 +549,23 @@ const styles = StyleSheet.create({
 
   formCard: {
     width: '100%',
-
     padding: 20,
-
     borderRadius: 30,
-
-    backgroundColor:
-      colors.blue,
-
+    backgroundColor: colors.blue,
     ...shadows.card,
   },
 
   formTitle: {
     color: colors.white,
-
-    fontFamily:
-      fonts.displayBold,
+    fontFamily: fonts.displayBold,
     fontSize: 23,
-
     lineHeight: 28,
   },
 
   formSubtitle: {
     marginTop: 2,
     marginBottom: 18,
-
-    color:
-      'rgba(255,255,255,0.80)',
-
+    color: 'rgba(255,255,255,0.80)',
     fontFamily: fonts.body,
     fontSize: 12,
   },
@@ -473,94 +576,67 @@ const styles = StyleSheet.create({
 
   formActions: {
     marginTop: 18,
-
     gap: 10,
   },
 
   cancelButton: {
     minHeight: 42,
-
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   cancelText: {
     color: colors.white,
-
-    fontFamily:
-      fonts.bodySemiBold,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-
-    textDecorationLine:
-      'underline',
+    textDecorationLine: 'underline',
   },
 
   emptyState: {
     width: '100%',
-
     paddingHorizontal: 22,
     paddingVertical: 34,
-
     alignItems: 'center',
-
     borderWidth: 1,
-    borderColor:
-      colors.border,
-
+    borderColor: colors.border,
     borderRadius: 28,
-
-    backgroundColor:
-      colors.surface,
+    backgroundColor: colors.surface,
   },
 
   emptyIcon: {
     width: 54,
     height: 54,
-
     marginBottom: 10,
-
     alignItems: 'center',
     justifyContent: 'center',
-
     borderRadius: radius.pill,
-
-    backgroundColor:
-      colors.accent,
+    backgroundColor: colors.accent,
   },
 
   emptySymbol: {
     color: colors.orange,
-
-    fontFamily:
-      fonts.displayBold,
+    fontFamily: fonts.displayBold,
     fontSize: 25,
   },
 
   emptyTitle: {
     color: colors.text,
-
-    fontFamily:
-      fonts.displayBold,
+    fontFamily: fonts.displayBold,
     fontSize: 18,
   },
 
   emptyText: {
     maxWidth: 240,
-
     marginTop: 5,
-
     color: colors.muted,
-
     fontFamily: fonts.body,
     fontSize: 12.5,
-
     lineHeight: 18,
     textAlign: 'center',
   },
 
   pressed: {
     opacity: 0.82,
-
     transform: [
       {
         scale: 0.96,
