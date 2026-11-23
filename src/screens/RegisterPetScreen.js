@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
 
 import Button from '../components/Button'
 import FormField from '../components/FormField'
 import ScreenContainer from '../components/ScreenContainer'
 import SelectField from '../components/SelectField'
 import { sendPetRequest } from '../utils/petApi'
+import { chooseCompressedPetPhoto } from '../utils/nativePhoto'
 import { colors, fonts, radius, shadows, spacing } from '../theme'
 
 const EMPTY_FORM = {
@@ -24,6 +26,25 @@ function RegisterPetScreen({ navigation }) {
   const [formData, setFormData] = useState(EMPTY_FORM)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [choosingPhoto, setChoosingPhoto] = useState(false)
+  const [photoData, setPhotoData] = useState(null)
+  const [previewUri, setPreviewUri] = useState(null)
+
+  async function handleSelectPhoto(source = 'gallery') {
+    if (saving || choosingPhoto) return
+    setChoosingPhoto(true)
+    setError('')
+    try {
+      const selected = await chooseCompressedPetPhoto(source)
+      if (!selected) return // El usuario canceló, conservamos la anterior.
+      setPhotoData(selected.photoData)
+      setPreviewUri(selected.previewUri)
+    } catch (err) {
+      setError(err.message || 'No se pudo seleccionar la foto.')
+    } finally {
+      setChoosingPhoto(false)
+    }
+  }
 
   function changeField(field, value) {
     setFormData((current) => ({ ...current, [field]: value }))
@@ -31,7 +52,7 @@ function RegisterPetScreen({ navigation }) {
   }
 
   async function handleSave() {
-    if (saving) return
+    if (saving || choosingPhoto) return
 
     const name = formData.name.trim()
     const species = formData.species
@@ -55,7 +76,7 @@ function RegisterPetScreen({ navigation }) {
         species,
         breed: formData.breed.trim(),
         age: formData.age.trim(),
-        photo: null,
+        photo: photoData,
         status: 'normal',
       })
 
@@ -79,8 +100,28 @@ function RegisterPetScreen({ navigation }) {
 
       <View style={styles.panel}>
         <View style={styles.avatar}>
-          <Text style={styles.paw}>🐾</Text>
-          <Text style={styles.photoHint}>La foto se agregará más adelante</Text>
+          {previewUri ? (
+            <Image source={{ uri: previewUri }} contentFit="cover" style={styles.previewPhoto} />
+          ) : (
+            <Text style={styles.paw}>🐾</Text>
+          )}
+          <Text style={styles.photoHint}>
+            {previewUri ? 'Fotografía lista para guardar' : 'Puedes añadir una foto desde la galería'}
+          </Text>
+          <Button disabled={saving || choosingPhoto} onPress={() => handleSelectPhoto('gallery')} variant="secondary">
+            {choosingPhoto ? 'Procesando foto...' : previewUri ? 'Cambiar desde galería' : 'Elegir desde galería'}
+          </Button>
+          <Button disabled={saving || choosingPhoto} onPress={() => handleSelectPhoto('camera')} variant="secondary">
+            Tomar foto con cámara
+          </Button>
+          {!!previewUri && (
+            <Button disabled={saving || choosingPhoto} variant="secondary" onPress={() => {
+              setPreviewUri(null)
+              setPhotoData(null)
+            }}>
+              Quitar fotografía
+            </Button>
+          )}
         </View>
 
         <View style={styles.form}>
@@ -116,13 +157,13 @@ function RegisterPetScreen({ navigation }) {
 
           {!!error && <Text style={styles.error}>{error}</Text>}
 
-          <Button disabled={saving} onPress={handleSave}>
+          <Button disabled={saving || choosingPhoto} onPress={handleSave}>
             {saving ? 'Guardando...' : 'Guardar mascota'}
           </Button>
 
           <Button
             variant="secondary"
-            disabled={saving}
+            disabled={saving || choosingPhoto}
             onPress={() => navigation.goBack()}
           >
             Cancelar
@@ -167,6 +208,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   paw: { fontSize: 48 },
+  previewPhoto: { width: 132, height: 132, borderRadius: 66 },
   photoHint: {
     fontFamily: fonts.body,
     fontSize: 12,

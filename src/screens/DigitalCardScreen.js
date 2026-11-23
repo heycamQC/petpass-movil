@@ -1,5 +1,6 @@
 import {
   Alert,
+  Linking,
   StyleSheet,
   Text,
   View,
@@ -7,12 +8,14 @@ import {
 } from 'react-native'
 
 import { Image } from 'expo-image'
+import QRCode from 'react-native-qrcode-svg'
 
 import Button from '../components/Button'
 import Message from '../components/Message'
 import useApi from '../hooks/useApi'
 import { API_URL } from '../config'
 import { getPetPhotoSource } from '../utils/petPhoto'
+import { getPublicPetProfileUrl } from '../utils/publicProfileUrl'
 import ScreenContainer from '../components/ScreenContainer'
 
 import {
@@ -21,54 +24,6 @@ import {
   radius,
   spacing,
 } from '../theme'
-
-function QrPlaceholder() {
-  const size = 11
-
-  return (
-    <View style={styles.qrFrame}>
-      <View style={styles.qrGrid}>
-        {Array.from({
-          length: size * size,
-        }).map((_, index) => {
-          const row =
-            Math.floor(index / size)
-
-          const column =
-            index % size
-
-          const filled =
-            (
-              row * 3 +
-              column * 5 +
-              row * column
-            ) % 7 < 3
-
-          return (
-            <View
-              key={index}
-              style={[
-                styles.qrPixel,
-                {
-                  backgroundColor:
-                    filled
-                      ? colors.textDark
-                      : colors.white,
-                },
-              ]}
-            />
-          )
-        })}
-      </View>
-
-      <View style={styles.qrLabel}>
-        <Text style={styles.qrLabelText}>
-          QR
-        </Text>
-      </View>
-    </View>
-  )
-}
 
 function InfoBox({
   label,
@@ -128,6 +83,16 @@ function DigitalCardScreen({ navigation, route }) {
   }
 
   const photoSource = getPetPhotoSource(pet.photo)
+  const profileUrl = getPublicPetProfileUrl(pet.id)
+
+  async function openProfileWeb() {
+    if (!profileUrl) return
+    try {
+      await Linking.openURL(profileUrl)
+    } catch {
+      Alert.alert('No se pudo abrir el perfil', 'Comprueba que PetPass Web esté encendida en la misma red.')
+    }
+  }
 
   return (
     <ScreenContainer>
@@ -214,16 +179,38 @@ function DigitalCardScreen({ navigation, route }) {
           />
         </View>
 
-        <View style={styles.qrSection}>
-          <QrPlaceholder />
 
-          <Text style={styles.qrText}>
-            Código QR disponible próximamente
-          </Text>
-        </View>
+          <View style={styles.qrSection}>
+            {profileUrl ? (
+              <View style={styles.qrFrame}>
+                <QRCode
+                  value={profileUrl}
+                  size={180}
+                  color="#111827"
+                  backgroundColor="#FFFFFF"
+                  ecl="M"
+                />
+              </View>
+            ) : (
+              <Text style={styles.qrText}>
+                No se pudo generar el código QR.
+              </Text>
+            )}
+
+            <Text style={styles.qrText}>
+              Escanea este código para ver el perfil público de {pet.name}.
+            </Text>
+          </View>
+
       </View>
 
       <View style={styles.actions}>
+        {!!profileUrl && (
+          <Button variant="secondary" onPress={openProfileWeb}>
+            Probar enlace del QR en navegador
+          </Button>
+        )}
+
         <Button
           onPress={() =>
             navigation.navigate(
@@ -441,51 +428,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+
   qrFrame: {
-    position: 'relative',
+    width: 204,
+    height: 204,
 
-    width: 130,
-    height: 130,
-
-    padding: 10,
+    padding: 12,
 
     alignItems: 'center',
     justifyContent: 'center',
 
+    borderRadius: 12,
     backgroundColor: colors.white,
   },
 
-  qrGrid: {
-    width: '100%',
-    height: '100%',
-
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-
-  qrPixel: {
-    width: '9.09%',
-    height: '9.09%',
-  },
-
-  qrLabel: {
-    position: 'absolute',
-
-    width: 42,
-    height: 42,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: colors.textDark,
-  },
-
-  qrLabelText: {
-    color: colors.white,
-
-    fontFamily: fonts.displayBold,
-    fontSize: 14,
-  },
 
   qrText: {
     color: colors.white,
@@ -494,6 +450,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
 
     textAlign: 'center',
+  },
+
+  qrNote: {
+    color: colors.white,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    textAlign: 'center',
+    opacity: 0.85,
   },
 
   actions: {
