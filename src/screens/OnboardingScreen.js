@@ -1,7 +1,8 @@
-import { useState } from 'react'
 
+import { useState } from 'react'
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -23,6 +24,7 @@ import {
 
 const LOGO = require('../../assets/logo-petpass.svg')
 
+// Conservamos los tres pasos originales.
 const STEPS = [
   {
     background: colors.blue,
@@ -52,8 +54,7 @@ function clamp(min, value, max) {
 }
 
 function OnboardingScreen({ navigation }) {
-  const [currentStep, setCurrentStep] =
-    useState(0)
+  const [currentStep, setCurrentStep] = useState(0)
 
   const {
     width,
@@ -61,59 +62,27 @@ function OnboardingScreen({ navigation }) {
   } = useWindowDimensions()
 
   const compact = height <= 700
-
   const step = STEPS[currentStep]
 
-  // Valores trasladados del responsive web original
-  const headerMarginTop = compact
-    ? 20
-    : clamp(
-        30,
-        height * 0.08,
-        70
-      )
-
-  const logoWidth = compact
-    ? 180
-    : clamp(
-        190,
-        width * 0.65,
-        260
-      )
-
-  const contentMarginBottom = compact
-    ? 12
-    : clamp(
-        20,
-        height * 0.07,
-        70
-      )
+  // Tamaños responsivos.
+  // El logo y la tarjeta permanecerán como un bloque centrado.
+  const logoWidth = clamp(
+    145,
+    Math.min(width * 0.55, height * 0.24),
+    220
+  )
 
   const titleSize = compact
     ? 26
-    : clamp(
-        26,
-        width * 0.08,
-        34
-      )
+    : clamp(26, width * 0.08, 34)
 
   const descriptionSize = compact
     ? 13
-    : clamp(
-        13,
-        width * 0.037,
-        15
-      )
+    : clamp(13, width * 0.037, 15)
 
   const handleNext = () => {
-    if (
-      currentStep <
-      STEPS.length - 1
-    ) {
-      setCurrentStep(
-        (current) => current + 1
-      )
-
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep((current) => current + 1)
       return
     }
 
@@ -126,145 +95,132 @@ function OnboardingScreen({ navigation }) {
       style={[
         styles.page,
         {
-          backgroundColor:
-            step.background,
+          backgroundColor: step.background,
         },
       ]}
     >
+      {/* Decoraciones originales de PetPass */}
       <OnboardingConfetti />
 
-      <View
-        style={[
-          styles.header,
-          {
-            marginTop:
-              headerMarginTop,
-          },
-        ]}
+      {/* Permite centrar y desplazarse en pantallas pequeñas */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Image
-          source={LOGO}
-          contentFit="contain"
-          style={{
-            width: logoWidth,
-            height: logoWidth,
-          }}
-        />
-      </View>
+        <View style={styles.content}>
 
-      <View
-        style={[
-          styles.mainContent,
-          {
-            marginBottom:
-              contentMarginBottom,
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.card,
-            compact &&
-              styles.cardCompact,
-          ]}
-        >
-          <Text
+          {/* LOGO */}
+          <View
             style={[
-              styles.title,
+              styles.header,
               {
-                fontSize: titleSize,
-                lineHeight:
-                  titleSize * 1.15,
+                marginBottom: compact ? 14 : 24,
               },
             ]}
           >
-            {step.title}
-          </Text>
+            <Image
+              source={LOGO}
+              contentFit="contain"
+              style={{
+                width: logoWidth,
+                height: logoWidth,
+              }}
+            />
+          </View>
 
-          <Text
-            style={[
-              styles.description,
-              {
-                fontSize:
-                  descriptionSize,
-                lineHeight:
-                  descriptionSize *
-                  1.45,
-              },
-              compact &&
-                styles.descriptionCompact,
-            ]}
-          >
-            {step.description}
-          </Text>
+          {/* TARJETA E INDICADORES */}
+          <View style={styles.mainContent}>
 
-          {currentStep ===
-          STEPS.length - 1 ? (
-            <Pressable
-              onPress={handleNext}
-              style={({ pressed }) => [
-                styles.startButton,
-                pressed &&
-                  styles.pressed,
+            <View
+              style={[
+                styles.card,
+                compact && styles.cardCompact,
               ]}
             >
               <Text
-                style={
-                  styles.startButtonText
-                }
+                style={[
+                  styles.title,
+                  {
+                    fontSize: titleSize,
+                    lineHeight: titleSize * 1.15,
+                  },
+                ]}
               >
-                Empezar
+                {step.title}
               </Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={handleNext}
-              accessibilityLabel="Siguiente paso"
-              style={({ pressed }) => [
-                styles.circleButton,
-                pressed &&
-                  styles.pressed,
+
+              <Text
+                style={[
+                  styles.description,
+                  {
+                    fontSize: descriptionSize,
+                    lineHeight: descriptionSize * 1.45,
+                  },
+                  compact && styles.descriptionCompact,
+                ]}
+              >
+                {step.description}
+              </Text>
+
+              {currentStep === STEPS.length - 1 ? (
+                <Pressable
+                  onPress={handleNext}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.startButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.startButtonText}>
+                    Empezar
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={handleNext}
+                  accessibilityRole="button"
+                  accessibilityLabel="Siguiente paso"
+                  style={({ pressed }) => [
+                    styles.circleButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.arrow}>
+                    ➔
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* INDICADORES DE PANTALLAS */}
+            <View
+              style={[
+                styles.dots,
+                compact && styles.dotsCompact,
               ]}
             >
-              <Text style={styles.arrow}>
-                ➔
-              </Text>
-            </Pressable>
-          )}
-        </View>
-
-        <View
-          style={[
-            styles.dots,
-            compact &&
-              styles.dotsCompact,
-          ]}
-        >
-          {STEPS.map(
-            (_, index) => {
-              const active =
-                index ===
-                currentStep
-
-              return (
+              {STEPS.map((_, index) => (
                 <Pressable
                   key={index}
-                  onPress={() =>
-                    setCurrentStep(
-                      index
-                    )
-                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ir a presentación ${index + 1}`}
+                  accessibilityState={{
+                    selected: index === currentStep,
+                  }}
+                  onPress={() => setCurrentStep(index)}
                   style={[
                     styles.dot,
-                    active &&
+                    index === currentStep &&
                       styles.dotActive,
                   ]}
                 />
-              )
-            }
-          )}
+              ))}
+            </View>
+
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -272,51 +228,52 @@ function OnboardingScreen({ navigation }) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-
-    paddingHorizontal: 16,
-
-    alignItems: 'center',
-    justifyContent: 'space-between',
-
     overflow: 'hidden',
   },
 
-  header: {
-    position: 'relative',
-
+  scroll: {
+    flex: 1,
     width: '100%',
+    zIndex: 2,
+  },
 
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 22,
+  },
 
+  content: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  header: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 2,
   },
 
   mainContent: {
-    position: 'relative',
-
     width: '100%',
     maxWidth: 360,
-
     alignItems: 'center',
-
     zIndex: 3,
   },
 
   card: {
     width: '100%',
-
     paddingTop: 30,
     paddingHorizontal: 22,
     paddingBottom: 26,
-
     alignItems: 'center',
-
     borderRadius: 38,
-
-    backgroundColor:
-      colors.background,
-
+    backgroundColor: colors.background,
     ...shadows.card,
   },
 
@@ -328,30 +285,19 @@ const styles = StyleSheet.create({
 
   title: {
     color: colors.heading,
-
-    fontFamily:
-      fonts.displayBold,
-
+    fontFamily: fonts.displayBold,
     fontWeight: '700',
-
     letterSpacing: -0.5,
-
     textAlign: 'center',
   },
 
   description: {
     maxWidth: 280,
-
     marginTop: 14,
     marginBottom: 26,
-
     color: colors.text,
-
-    fontFamily:
-      fonts.bodyMedium,
-
+    fontFamily: fonts.bodyMedium,
     fontWeight: '500',
-
     textAlign: 'center',
   },
 
@@ -362,62 +308,42 @@ const styles = StyleSheet.create({
 
   circleButton: {
     alignSelf: 'flex-end',
-
     width: 52,
     height: 52,
-
     marginRight: 6,
-
     alignItems: 'center',
     justifyContent: 'center',
-
     borderRadius: radius.pill,
-
-    backgroundColor:
-      colors.orange,
-
+    backgroundColor: colors.orange,
     ...shadows.orange,
   },
 
   startButton: {
     width: '100%',
     maxWidth: 230,
-
     minHeight: 50,
-
     paddingHorizontal: 22,
-
     alignItems: 'center',
     justifyContent: 'center',
-
     borderRadius: radius.pill,
-
-    backgroundColor:
-      colors.orange,
-
+    backgroundColor: colors.orange,
     ...shadows.orange,
   },
 
   startButtonText: {
     color: colors.white,
-
-    fontFamily:
-      fonts.displayBold,
-
+    fontFamily: fonts.displayBold,
     fontSize: 17,
   },
 
   arrow: {
     marginTop: -2,
-
     color: colors.white,
-
     fontSize: 25,
   },
 
   pressed: {
     opacity: 0.88,
-
     transform: [
       {
         scale: 0.96,
@@ -427,11 +353,9 @@ const styles = StyleSheet.create({
 
   dots: {
     marginTop: 18,
-
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-
     gap: 16,
   },
 
@@ -442,23 +366,15 @@ const styles = StyleSheet.create({
   dot: {
     width: 24,
     height: 24,
-
     borderWidth: 4,
-    borderColor:
-      'rgba(255,255,255,0.95)',
-
+    borderColor: 'rgba(255,255,255,0.95)',
     borderRadius: radius.pill,
-
-    backgroundColor:
-      'transparent',
+    backgroundColor: 'transparent',
   },
 
   dotActive: {
-    backgroundColor:
-      colors.white,
-
-    borderColor:
-      colors.white,
+    backgroundColor: colors.white,
+    borderColor: colors.white,
   },
 })
 

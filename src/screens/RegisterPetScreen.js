@@ -1,14 +1,24 @@
+
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
 
 import Button from '../components/Button'
 import FormField from '../components/FormField'
+import PetAgeField from '../components/PetAgeField'
 import ScreenContainer from '../components/ScreenContainer'
 import SelectField from '../components/SelectField'
+
 import { sendPetRequest } from '../utils/petApi'
 import { chooseCompressedPetPhoto } from '../utils/nativePhoto'
-import { colors, fonts, radius, shadows, spacing } from '../theme'
+
+import {
+  colors,
+  fonts,
+  radius,
+  shadows,
+  spacing,
+} from '../theme'
 
 const EMPTY_FORM = {
   name: '',
@@ -26,28 +36,41 @@ function RegisterPetScreen({ navigation }) {
   const [formData, setFormData] = useState(EMPTY_FORM)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+
   const [choosingPhoto, setChoosingPhoto] = useState(false)
   const [photoData, setPhotoData] = useState(null)
   const [previewUri, setPreviewUri] = useState(null)
 
   async function handleSelectPhoto(source = 'gallery') {
     if (saving || choosingPhoto) return
+
     setChoosingPhoto(true)
     setError('')
+
     try {
       const selected = await chooseCompressedPetPhoto(source)
-      if (!selected) return // El usuario canceló, conservamos la anterior.
+
+      // Si cancela, conservamos la fotografía anterior.
+      if (!selected) return
+
       setPhotoData(selected.photoData)
       setPreviewUri(selected.previewUri)
     } catch (err) {
-      setError(err.message || 'No se pudo seleccionar la foto.')
+      setError(
+        err.message ||
+        'No se pudo seleccionar la foto.'
+      )
     } finally {
       setChoosingPhoto(false)
     }
   }
 
   function changeField(field, value) {
-    setFormData((current) => ({ ...current, [field]: value }))
+    setFormData((current) => ({
+      ...current,
+      [field]: value,
+    }))
+
     setError('')
   }
 
@@ -58,12 +81,16 @@ function RegisterPetScreen({ navigation }) {
     const species = formData.species
 
     if (!name || !species) {
-      setError('Ingresa al menos el nombre y la especie.')
+      setError(
+        'Ingresa al menos el nombre y la especie.'
+      )
       return
     }
 
     if (!['Perro', 'Gato'].includes(species)) {
-      setError('Selecciona una especie válida.')
+      setError(
+        'Selecciona una especie válida.'
+      )
       return
     }
 
@@ -71,19 +98,29 @@ function RegisterPetScreen({ navigation }) {
     setError('')
 
     try {
-      await sendPetRequest('/api/mascotas', 'POST', {
-        name,
-        species,
-        breed: formData.breed.trim(),
-        age: formData.age.trim(),
-        photo: photoData,
-        status: 'normal',
-      })
+      // El backend sigue recibiendo age como texto:
+      // "2 años", "8 meses" o "" si no se seleccionó.
+      await sendPetRequest(
+        '/api/mascotas',
+        'POST',
+        {
+          name,
+          species,
+          breed: formData.breed.trim(),
+          age: formData.age.trim(),
+          photo: photoData,
+          status: 'normal',
+        }
+      )
 
-      // Regresamos a PetsScreen: al recuperar el foco recargará el GET.
+      // PetsScreen volverá a consultar la API
+      // al recuperar el foco.
       navigation.goBack()
     } catch (err) {
-      setError(err.message)
+      setError(
+        err.message ||
+        'No se pudo registrar la mascota.'
+      )
     } finally {
       setSaving(false)
     }
@@ -92,45 +129,83 @@ function RegisterPetScreen({ navigation }) {
   return (
     <ScreenContainer>
       <View style={styles.heading}>
-        <Text style={styles.title}>Registrar mascota</Text>
+        <Text style={styles.title}>
+          Registrar mascota
+        </Text>
+
         <Text style={styles.subtitle}>
-          Completa los datos para crear su identidad digital en PetPass.
+          Completa los datos para crear su
+          identidad digital en PetPass.
         </Text>
       </View>
 
       <View style={styles.panel}>
+        {/* Fotografía de mascota */}
         <View style={styles.avatar}>
           {previewUri ? (
-            <Image source={{ uri: previewUri }} contentFit="cover" style={styles.previewPhoto} />
+            <Image
+              source={{ uri: previewUri }}
+              contentFit="cover"
+              style={styles.previewPhoto}
+            />
           ) : (
             <Text style={styles.paw}>🐾</Text>
           )}
+
           <Text style={styles.photoHint}>
-            {previewUri ? 'Fotografía lista para guardar' : 'Puedes añadir una foto desde la galería'}
+            {previewUri
+              ? 'Fotografía lista para guardar'
+              : 'Puedes añadir una foto desde la galería'}
           </Text>
-          <Button disabled={saving || choosingPhoto} onPress={() => handleSelectPhoto('gallery')} variant="secondary">
-            {choosingPhoto ? 'Procesando foto...' : previewUri ? 'Cambiar desde galería' : 'Elegir desde galería'}
+
+          <Button
+            disabled={saving || choosingPhoto}
+            onPress={() => handleSelectPhoto('gallery')}
+            variant="secondary"
+          >
+            {choosingPhoto
+              ? 'Procesando foto...'
+              : previewUri
+                ? 'Cambiar desde galería'
+                : 'Elegir desde galería'}
           </Button>
-          <Button disabled={saving || choosingPhoto} onPress={() => handleSelectPhoto('camera')} variant="secondary">
+
+          <Button
+            disabled={saving || choosingPhoto}
+            onPress={() => handleSelectPhoto('camera')}
+            variant="secondary"
+          >
             Tomar foto con cámara
           </Button>
+
           {!!previewUri && (
-            <Button disabled={saving || choosingPhoto} variant="secondary" onPress={() => {
-              setPreviewUri(null)
-              setPhotoData(null)
-            }}>
+            <Button
+              disabled={saving || choosingPhoto}
+              variant="secondary"
+              onPress={() => {
+                setPreviewUri(null)
+                setPhotoData(null)
+              }}
+            >
               Quitar fotografía
             </Button>
           )}
         </View>
 
+        {/* Datos de la mascota */}
         <View style={styles.form}>
           <FormField
             label="Nombre *"
             value={formData.name}
-            onChangeText={(value) => changeField('name', value)}
+            onChangeText={(value) =>
+              changeField('name', value)
+            }
             placeholder="Nombre de tu mascota"
-            error={!formData.name.trim() && error ? 'Campo obligatorio' : ''}
+            error={
+              !formData.name.trim() && error
+                ? 'Campo obligatorio'
+                : ''
+            }
           />
 
           <SelectField
@@ -138,27 +213,42 @@ function RegisterPetScreen({ navigation }) {
             value={formData.species}
             options={SPECIES_OPTIONS}
             placeholder="Selecciona Perro o Gato"
-            onChange={(value) => changeField('species', value)}
+            onChange={(value) =>
+              changeField('species', value)
+            }
           />
 
           <FormField
             label="Raza"
             value={formData.breed}
-            onChangeText={(value) => changeField('breed', value)}
+            onChangeText={(value) =>
+              changeField('breed', value)
+            }
             placeholder="Ej. Pug o mestizo"
           />
 
-          <FormField
-            label="Edad"
+          {/* NUEVO: edad con selectores */}
+          <PetAgeField
             value={formData.age}
-            onChangeText={(value) => changeField('age', value)}
-            placeholder="Ej. 2 años"
+            disabled={saving || choosingPhoto}
+            onChange={(value) =>
+              changeField('age', value)
+            }
           />
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text style={styles.error}>
+              {error}
+            </Text>
+          )}
 
-          <Button disabled={saving || choosingPhoto} onPress={handleSave}>
-            {saving ? 'Guardando...' : 'Guardar mascota'}
+          <Button
+            disabled={saving || choosingPhoto}
+            onPress={handleSave}
+          >
+            {saving
+              ? 'Guardando...'
+              : 'Guardar mascota'}
           </Button>
 
           <Button
@@ -175,12 +265,16 @@ function RegisterPetScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  heading: { marginBottom: 22 },
+  heading: {
+    marginBottom: 22,
+  },
+
   title: {
     color: colors.text,
     fontFamily: fonts.displayBold,
     fontSize: 28,
   },
+
   subtitle: {
     marginTop: 8,
     color: colors.muted,
@@ -188,6 +282,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
+
   panel: {
     width: '100%',
     maxWidth: 480,
@@ -199,6 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     ...shadows.soft,
   },
+
   avatar: {
     alignSelf: 'center',
     alignItems: 'center',
@@ -207,15 +303,28 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
   },
-  paw: { fontSize: 48 },
-  previewPhoto: { width: 132, height: 132, borderRadius: 66 },
+
+  paw: {
+    fontSize: 48,
+  },
+
+  previewPhoto: {
+    width: 132,
+    height: 132,
+    borderRadius: 66,
+  },
+
   photoHint: {
     fontFamily: fonts.body,
     fontSize: 12,
     color: colors.muted,
     textAlign: 'center',
   },
-  form: { gap: spacing.md },
+
+  form: {
+    gap: spacing.md,
+  },
+
   error: {
     padding: 12,
     backgroundColor: colors.dangerBg,

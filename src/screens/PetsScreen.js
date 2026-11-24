@@ -1,5 +1,13 @@
+
 import { useCallback, useRef, useState } from 'react'
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 
 import Button from '../components/Button'
@@ -16,7 +24,13 @@ import { getPetPhotoSource } from '../utils/petPhoto'
 import { colors, fonts, spacing } from '../theme'
 
 function PetsScreen({ navigation }) {
-  const { data, loading, error, refetch } = useApi(`${API_URL}/api/mascotas`)
+  const {
+    data,
+    loading,
+    error,
+    refetch,
+  } = useApi(`${API_URL}/api/mascotas`)
+
   const [selectedPetId, setSelectedPetId] = useState(null)
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -25,9 +39,7 @@ function PetsScreen({ navigation }) {
   const firstFocus = useRef(true)
   const deletingLock = useRef(false)
 
-  // React Navigation conserva la pantalla anterior en la pila.
-  // Al volver de Registrar o Editar, recargamos la misma lista desde SQLite.
-  // En el primer foco no duplicamos el GET inicial de useApi.
+  // Conservar actualización al regresar de otras pantallas.
   useFocusEffect(
     useCallback(() => {
       if (firstFocus.current) {
@@ -39,8 +51,11 @@ function PetsScreen({ navigation }) {
   )
 
   const pets = Array.isArray(data) ? data : []
+
   const selectedPet =
-    pets.find((pet) => pet.id === selectedPetId) || pets[0] || null
+    pets.find((pet) => pet.id === selectedPetId) ||
+    pets[0] ||
+    null
 
   function openRegister() {
     setActionError('')
@@ -48,23 +63,37 @@ function PetsScreen({ navigation }) {
   }
 
   function openCard() {
-    if (selectedPet) navigation.navigate('Carnet', { id: selectedPet.id })
+    if (selectedPet) {
+      navigation.navigate('Carnet', {
+        id: selectedPet.id,
+      })
+    }
   }
 
   function openEdit() {
-    if (selectedPet) {
-      setActionError('')
-      navigation.navigate('EditarMascota', { id: selectedPet.id })
-    }
+    if (!selectedPet) return
+
+    setActionError('')
+
+    navigation.navigate('EditarMascota', {
+      id: selectedPet.id,
+    })
   }
 
   function openHistory() {
-    if (selectedPet) {
-      navigation.navigate('Historial', {
-        id: selectedPet.id,
-        petName: selectedPet.name,
-      })
-    }
+    if (!selectedPet) return
+
+    navigation.navigate('Historial', {
+      id: selectedPet.id,
+      petName: selectedPet.name,
+    })
+  }
+
+  function askDelete() {
+    if (!selectedPet || deleting) return
+
+    setActionError('')
+    setDeleteModalVisible(true)
   }
 
   async function handleDeletePet() {
@@ -77,14 +106,24 @@ function PetsScreen({ navigation }) {
     const petName = selectedPet.name
 
     try {
-      await sendPetRequest(`/api/mascotas/${selectedPet.id}`, 'DELETE')
+      await sendPetRequest(
+        `/api/mascotas/${selectedPet.id}`,
+        'DELETE'
+      )
+
       setDeleteModalVisible(false)
       setSelectedPetId(null)
       refetch()
-      Alert.alert('Mascota eliminada', `${petName} fue eliminada correctamente.`)
+
+      Alert.alert(
+        'Mascota eliminada',
+        `${petName} fue eliminada correctamente.`
+      )
     } catch (err) {
       setDeleteModalVisible(false)
-      setActionError(err.message)
+      setActionError(
+        err.message || 'No se pudo eliminar la mascota.'
+      )
     } finally {
       deletingLock.current = false
       setDeleting(false)
@@ -93,33 +132,63 @@ function PetsScreen({ navigation }) {
 
   return (
     <ScreenContainer>
-      <Text style={styles.pageTitle}>Mis Mascotas</Text>
+      <Text style={styles.pageTitle}>
+        Mis Mascotas
+      </Text>
 
       {loading ? (
         <Message loading />
       ) : error ? (
         <>
           <Message error={error} />
-          <Button variant="secondary" onPress={refetch}>Reintentar</Button>
+
+          <Button variant="secondary" onPress={refetch}>
+            Reintentar
+          </Button>
         </>
       ) : !Array.isArray(data) ? (
         <>
-          <Message error="La API no devolvió una lista válida de mascotas." />
-          <Button variant="secondary" onPress={refetch}>Reintentar</Button>
+          <Message
+            error="La API no devolvió una lista válida de mascotas."
+          />
+
+          <Button variant="secondary" onPress={refetch}>
+            Reintentar
+          </Button>
         </>
       ) : pets.length === 0 ? (
         <View style={styles.emptyActions}>
-          <Message empty emptyText="Todavía no hay mascotas registradas." />
-          <Button onPress={openRegister}>Registrar mi primera mascota</Button>
-          <Button variant="secondary" onPress={refetch}>Actualizar lista</Button>
+          <Message
+            empty
+            emptyText="Todavía no hay mascotas registradas."
+          />
+
+          <Button onPress={openRegister}>
+            Registrar mi primera mascota
+          </Button>
+
+          <Button variant="secondary" onPress={refetch}>
+            Actualizar lista
+          </Button>
         </View>
       ) : (
         <>
+          {/* SELECCIÓN DE MASCOTAS */}
           <View style={styles.selectorSection}>
             <View style={styles.selectorHeader}>
-              <Text style={styles.sectionTitle}>Seleccionar mascota</Text>
-              <Pressable onPress={refetch} style={styles.refreshControl}>
-                <Text style={styles.refreshText}>Actualizar</Text>
+              <Text style={styles.sectionTitle}>
+                Seleccionar mascota
+              </Text>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Actualizar mascotas"
+                onPress={refetch}
+                style={styles.refreshControl}
+              >
+                <Text style={styles.refreshText}>
+                  Actualizar
+                </Text>
               </Pressable>
             </View>
 
@@ -133,7 +202,7 @@ function PetsScreen({ navigation }) {
                 <PetSelector
                   name={item.name}
                   photo={getPetPhotoSource(item.photo)}
-                  selected={selectedPet.id === item.id}
+                  selected={selectedPet?.id === item.id}
                   onPress={() => {
                     setSelectedPetId(item.id)
                     setActionError('')
@@ -141,53 +210,55 @@ function PetsScreen({ navigation }) {
                 />
               )}
               ListFooterComponent={
-                <PetSelector name="Agregar" variant="add" onPress={openRegister} />
+                <PetSelector
+                  name="Agregar"
+                  variant="add"
+                  onPress={openRegister}
+                />
               }
             />
           </View>
 
+          {/* INFORMACIÓN DE LA MASCOTA */}
           <View style={styles.detailSection}>
-            <Text style={styles.sectionTitle}>Información</Text>
+            <Text style={styles.infoTitle}>
+              Información
+            </Text>
 
             <PetCard
+              petId={selectedPet.id}
               name={selectedPet.name}
               photo={getPetPhotoSource(selectedPet.photo)}
               species={selectedPet.species}
               breed={selectedPet.breed}
               age={selectedPet.age || 'No registrada'}
-              onEdit={openEdit}
               onQrPress={openCard}
+              onEdit={openEdit}
+              onHistory={openHistory}
+              onDelete={askDelete}
+              deleting={deleting}
             />
 
-            {!!actionError && <Message error={actionError} />}
-
-            <View style={styles.actions}>
-              <Button onPress={openCard}>Ver carnet digital</Button>
-              <Button variant="secondary" onPress={openHistory}>
-                Historial médico
-              </Button>
-              <Button variant="secondary" onPress={openEdit}>
-                Editar mascota
-              </Button>
-              <Button
-                variant="danger"
-                onPress={() => setDeleteModalVisible(true)}
-              >
-                Eliminar mascota
-              </Button>
-            </View>
+            {!!actionError && (
+              <Message error={actionError} />
+            )}
           </View>
 
+          {/* CONSERVAMOS LA CONFIRMACIÓN DE ELIMINACIÓN */}
           <ConfirmationModal
             visible={deleteModalVisible}
             title="Eliminar mascota"
             message={`¿Eliminar a ${selectedPet.name}? También se eliminará su historial médico. Las alertas existentes conservarán su contenido, pero dejarán de estar vinculadas a esta mascota. Esta acción no se puede deshacer.`}
-            confirmText={deleting ? 'Eliminando...' : 'Sí, eliminar'}
+            confirmText={
+              deleting ? 'Eliminando...' : 'Sí, eliminar'
+            }
             cancelText="No, volver"
             danger
             onConfirm={handleDeletePet}
             onCancel={() => {
-              if (!deleting) setDeleteModalVisible(false)
+              if (!deleting) {
+                setDeleteModalVisible(false)
+              }
             }}
           />
         </>
@@ -196,38 +267,65 @@ function PetsScreen({ navigation }) {
   )
 }
 
-// Conservamos los estilos originales de Parte 2 y añadimos solo ajustes locales.
 const styles = StyleSheet.create({
   pageTitle: {
-    marginBottom: 24,
+    marginBottom: 20,
     color: colors.text,
     fontFamily: fonts.displayBold,
     fontSize: 28,
   },
-  selectorSection: { marginBottom: 30 },
+
+  selectorSection: {
+    marginBottom: 26,
+  },
+
   selectorHeader: {
+    marginBottom: 14,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 16,
   },
+
   sectionTitle: {
     color: colors.text,
     fontFamily: fonts.displayBold,
-    fontSize: 20,
+    fontSize: 18,
   },
-  refreshControl: { paddingVertical: 6, paddingHorizontal: 10 },
+
+  infoTitle: {
+    marginBottom: 4,
+    color: colors.text,
+    fontFamily: fonts.displayBold,
+    fontSize: 22,
+  },
+
+  refreshControl: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+
   refreshText: {
     color: colors.blueDark,
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
   },
-  selectorRow: { gap: 12, paddingRight: 12, paddingBottom: 6 },
-  detailSection: { gap: spacing.md },
-  actions: { gap: 12, marginTop: 2 },
-  emptyActions: { gap: spacing.md },
+
+  selectorRow: {
+    gap: 12,
+    paddingRight: 12,
+    paddingBottom: 6,
+  },
+
+  detailSection: {
+    gap: spacing.md,
+    paddingBottom: 12,
+  },
+
+  emptyActions: {
+    gap: spacing.md,
+  },
 })
 
 export default PetsScreen

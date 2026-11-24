@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 
 import {
@@ -16,6 +17,9 @@ import ConfirmationModal
 import FormField
   from '../components/FormField'
 
+import SelectField
+  from '../components/SelectField'
+
 import Button
   from '../components/Button'
 
@@ -29,50 +33,50 @@ import {
   shadows,
 } from '../theme'
 
-const CAMERA =
-  require('../../assets/Camera.svg')
+const CAMERA = require('../../assets/Camera.svg')
 
+// Opciones de zona para el perfil del tutor.
+// Coinciden con las zonas utilizadas en PetPass.
+const ZONE_OPTIONS = [
+  { label: 'Sopocachi', value: 'Sopocachi' },
+  { label: 'Miraflores', value: 'Miraflores' },
+  { label: 'Zona Sur', value: 'Zona Sur' },
+  { label: 'El Alto', value: 'El Alto' },
+  { label: 'Centro', value: 'Centro' },
+]
+
+// Ícono del avatar original.
 function AvatarIcon() {
   return (
     <View style={styles.avatarIcon}>
       <View style={styles.avatarHead} />
-
       <View style={styles.avatarBody} />
     </View>
   )
 }
 
-function EditIcon() {
-  return (
-    <View style={styles.editIcon}>
-      <View style={styles.editPencil} />
-      <View style={styles.editLine} />
-    </View>
-  )
-}
-
 function AccountScreen() {
-  const [formData, setFormData] =
-    useState({
-      name: 'Tutor PetPass',
-      email: 'tutor@petpass.com',
-      phone: '70000000',
-      zone: 'Sopocachi',
-      emergencyContact: '',
-    })
+  // Conservamos los datos de demostración actuales.
+  const [formData, setFormData] = useState({
+    name: 'Tutor PetPass',
+    email: 'tutor@petpass.com',
+    phone: '70000000',
+    zone: 'Sopocachi',
+    emergencyContact: '',
+  })
 
   const [
     deleteModalVisible,
     setDeleteModalVisible,
   ] = useState(false)
 
-  const handleChange =
-    (field) => (value) => {
-      setFormData((current) => ({
-        ...current,
-        [field]: value,
-      }))
-    }
+  // Actualiza los campos localmente.
+  const handleChange = (field) => (value) => {
+    setFormData((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
 
   return (
     <ScreenContainer>
@@ -81,6 +85,8 @@ function AccountScreen() {
       </Text>
 
       <View style={styles.card}>
+
+        {/* AVATAR */}
         <View style={styles.avatarWrapper}>
           <View style={styles.avatar}>
             <AvatarIcon />
@@ -88,8 +94,12 @@ function AccountScreen() {
 
           <Pressable
             accessibilityLabel="Cambiar foto de perfil"
-            onPress={() => Alert.alert('Foto de perfil',
-              'La selección de fotografías se integrará en una etapa posterior.')}
+            onPress={() =>
+              Alert.alert(
+                'Foto de perfil',
+                'La selección de fotografías se integrará en una etapa posterior.'
+              )
+            }
             style={({ pressed }) => [
               styles.cameraButton,
               pressed && styles.pressed,
@@ -103,79 +113,80 @@ function AccountScreen() {
           </Pressable>
         </View>
 
+        {/* NOMBRE DEL TUTOR */}
         <Text style={styles.userName}>
           {formData.name}
         </Text>
 
+        {/* FORMULARIO */}
         <View style={styles.form}>
+
           <FormField
             label="Nombre completo"
             value={formData.name}
-            onChangeText={
-              handleChange('name')
-            }
+            onChangeText={handleChange('name')}
+            placeholder="Nombre completo"
           />
 
           <FormField
             label="Teléfono"
             value={formData.phone}
-            onChangeText={
-              handleChange('phone')
-            }
+            onChangeText={handleChange('phone')}
             keyboardType="phone-pad"
+            placeholder="Ej. 70000000"
           />
 
           <FormField
             label="Correo"
             value={formData.email}
-            onChangeText={
-              handleChange('email')
-            }
+            onChangeText={handleChange('email')}
             keyboardType="email-address"
+            placeholder="correo@ejemplo.com"
           />
 
-          <View style={styles.zoneRow}>
-            <View style={styles.zoneField}>
-              <FormField
-                label="Zona"
-                value={formData.zone}
-                onChangeText={
-                  handleChange('zone')
-                }
-              />
-            </View>
+          {/*
+            NUEVO SELECTOR DE ZONA
 
-            <Pressable
-              accessibilityLabel="Editar zona"
-              onPress={() => Alert.alert('Editar zona',
-                'Puedes escribir directamente en el campo Zona.')}
-              style={({ pressed }) => [
-                styles.editButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <EditIcon />
-            </Pressable>
-          </View>
+            Reemplaza el campo de texto manual
+            y el antiguo botón naranja de lápiz.
+          */}
+          <SelectField
+            label="Zona"
+            value={formData.zone}
+            options={ZONE_OPTIONS}
+            placeholder="Selecciona tu zona"
+            onChange={handleChange('zone')}
+          />
+
+          <Text style={styles.zoneHelp}>
+            Selecciona la zona de La Paz donde
+            te encuentras habitualmente.
+          </Text>
 
           <FormField
             label="Contacto de emergencia (opcional)"
-            value={
-              formData.emergencyContact
-            }
+            value={formData.emergencyContact}
             onChangeText={
-              handleChange(
-                'emergencyContact'
-              )
+              handleChange('emergencyContact')
             }
             keyboardType="phone-pad"
+            placeholder="Teléfono de emergencia"
           />
+
         </View>
       </View>
 
+      {/* PIE DE PÁGINA */}
       <View style={styles.footer}>
-        <Pressable onPress={() => Alert.alert('Términos y condiciones',
-          'Documento informativo pendiente de integrar.')}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            Alert.alert(
+              'Términos y condiciones',
+              'Documento informativo pendiente de integrar.'
+            )
+          }
+        >
           <Text style={styles.terms}>
             Términos y condiciones
           </Text>
@@ -191,6 +202,7 @@ function AccountScreen() {
         </Button>
       </View>
 
+      {/* CONFIRMACIÓN ORIGINAL */}
       <ConfirmationModal
         visible={deleteModalVisible}
         danger
@@ -203,8 +215,11 @@ function AccountScreen() {
         }
         onConfirm={() => {
           setDeleteModalVisible(false)
-          Alert.alert('Cuenta sin cambios',
-            'No se eliminó ninguna cuenta. La gestión real requiere backend de usuarios.')
+
+          Alert.alert(
+            'Cuenta sin cambios',
+            'No se eliminó ninguna cuenta. La gestión real requiere backend de usuarios.'
+          )
         }}
       />
     </ScreenContainer>
@@ -215,113 +230,83 @@ const styles = StyleSheet.create({
   title: {
     marginTop: 4,
     marginBottom: 18,
-
     color: colors.text,
-
     fontFamily: fonts.displayBold,
     fontSize: 32,
-
     lineHeight: 38,
     textAlign: 'center',
   },
 
   card: {
     width: '100%',
-
     paddingHorizontal: 22,
     paddingTop: 34,
     paddingBottom: 28,
-
     alignItems: 'center',
-
     borderRadius: 40,
-
     backgroundColor: colors.primary,
-
     ...shadows.card,
   },
 
   avatarWrapper: {
     position: 'relative',
-
     marginBottom: 8,
   },
 
   avatar: {
     width: 110,
     height: 110,
-
     alignItems: 'center',
     justifyContent: 'center',
-
     borderWidth: 4,
     borderColor: colors.white,
-
     borderRadius: radius.pill,
-
     backgroundColor: '#d9d9d9',
   },
 
   avatarIcon: {
     position: 'relative',
-
     width: 62,
     height: 62,
   },
 
   avatarHead: {
     position: 'absolute',
-
     top: 3,
     left: 19,
-
     width: 24,
     height: 24,
-
     borderWidth: 2,
     borderColor: colors.text,
-
     borderRadius: radius.pill,
   },
 
   avatarBody: {
     position: 'absolute',
-
     left: 5,
     bottom: 4,
-
     width: 52,
     height: 27,
-
     borderWidth: 2,
     borderColor: colors.text,
     borderBottomWidth: 0,
-
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
   },
 
   cameraButton: {
     position: 'absolute',
-
     right: -2,
     bottom: 2,
-
     width: 36,
     height: 36,
-
     padding: 6,
-
     alignItems: 'center',
     justifyContent: 'center',
-
     borderWidth: 2,
     borderColor: colors.white,
-
     borderRadius: radius.pill,
-
     backgroundColor: colors.white,
-
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
@@ -335,119 +320,52 @@ const styles = StyleSheet.create({
   cameraIcon: {
     width: 22,
     height: 22,
-
     tintColor: colors.orange,
   },
 
   userName: {
     marginTop: 6,
     marginBottom: 20,
-
     color: colors.white,
-
     fontFamily: fonts.displayBold,
     fontSize: 30,
-
     lineHeight: 36,
     textAlign: 'center',
   },
 
   form: {
     width: '100%',
-
     gap: 12,
   },
 
-  zoneRow: {
-    width: '100%',
-
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-
-    gap: 8,
-  },
-
-  zoneField: {
-    flex: 1,
-  },
-
-  editButton: {
-    width: 42,
-    height: 42,
-
-    marginBottom: 1,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    borderRadius: 12,
-
-    backgroundColor: colors.orange,
-
-    ...shadows.orange,
-  },
-
-  editIcon: {
-    position: 'relative',
-
-    width: 22,
-    height: 22,
-  },
-
-  editPencil: {
-    position: 'absolute',
-
-    left: 9,
-    top: 1,
-
-    width: 4,
-    height: 18,
-
-    borderRadius: 3,
-
-    backgroundColor: colors.white,
-
-    transform: [
-      {
-        rotate: '42deg',
-      },
-    ],
-  },
-
-  editLine: {
-    position: 'absolute',
-
-    left: 2,
-    bottom: 2,
-
-    width: 16,
-    height: 2,
-
-    backgroundColor: colors.white,
+  // Texto auxiliar para el selector de zona.
+  zoneHelp: {
+    paddingHorizontal: 16,
+    marginTop: -5,
+    marginBottom: 4,
+    color: colors.white,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 17,
+    opacity: 0.9,
   },
 
   footer: {
     width: '100%',
-
     marginTop: 20,
-
     alignItems: 'center',
-
     gap: 12,
   },
 
   terms: {
     color: colors.orange,
-
     fontFamily: fonts.body,
     fontSize: 13,
-
     textDecorationLine: 'underline',
   },
 
   pressed: {
     opacity: 0.82,
-
     transform: [
       {
         scale: 0.96,

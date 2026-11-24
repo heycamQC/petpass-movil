@@ -1,3 +1,4 @@
+
 import {
   Pressable,
   StyleSheet,
@@ -6,6 +7,7 @@ import {
 } from 'react-native'
 
 import { Image } from 'expo-image'
+import Svg, { Circle, Path } from 'react-native-svg'
 
 import {
   colors,
@@ -14,42 +16,143 @@ import {
   shadows,
 } from '../theme'
 
-function PawBackground() {
+// Recuperamos los círculos decorativos de la tarjeta original.
+function SoftBubbles() {
   return (
     <View
+      style={styles.bubbles}
       pointerEvents="none"
-      style={styles.paw}
     >
-      <View style={[styles.pawToe, styles.pawToe1]} />
-      <View style={[styles.pawToe, styles.pawToe2]} />
-      <View style={[styles.pawToe, styles.pawToe3]} />
-      <View style={[styles.pawToeSmall, styles.pawToe4]} />
-
-      <View style={styles.pawPad} />
+      <View style={[styles.bubble, styles.bubbleOne]} />
+      <View style={[styles.bubble, styles.bubbleTwo]} />
+      <View style={[styles.bubble, styles.bubbleThree]} />
+      <View style={[styles.bubble, styles.bubbleFour]} />
     </View>
   )
 }
 
-function EditIcon() {
+// Iconos SVG.
+// Se utiliza react-native-svg, que ya tiene PetPass.
+function CardIcon({
+  type,
+  color = '#FFFFFF',
+  size = 26,
+}) {
+  const stroke = {
+    fill: 'none',
+    stroke: color,
+    strokeWidth: 1.9,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  }
+
   return (
-    <Text style={styles.editSymbol}>
-      ✎
-    </Text>
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+    >
+      {/* ESTETOSCOPIO PARA HISTORIAL MÉDICO */}
+      {type === 'medical' && (
+        <>
+          <Path
+            d="M6 3v5a5 5 0 0 0 10 0V3"
+            {...stroke}
+          />
+          <Path
+            d="M4 3h4M14 3h4"
+            {...stroke}
+          />
+          <Path
+            d="M11 13v3a4 4 0 0 0 8 0v-2"
+            {...stroke}
+          />
+          <Circle
+            cx="19"
+            cy="12"
+            r="2"
+            {...stroke}
+          />
+        </>
+      )}
+
+      {/* EDITAR */}
+      {type === 'edit' && (
+        <>
+          <Path
+            d="M12 20h9"
+            {...stroke}
+          />
+          <Path
+            d="M16.5 3.5a2.1 2.1 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5Z"
+            {...stroke}
+          />
+        </>
+      )}
+
+      {/* ELIMINAR */}
+      {type === 'delete' && (
+        <>
+          <Path
+            d="M3 6h18M8 6V4h8v2M5 6l1 14h12l1-14"
+            {...stroke}
+          />
+          <Path
+            d="M10 10v7M14 10v7"
+            {...stroke}
+          />
+        </>
+      )}
+
+      {/* ACCESO DIRECTO AL CARNET */}
+      {type === 'qr' && (
+        <>
+          <Path
+            d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z"
+            {...stroke}
+          />
+          <Path
+            d="M14 14h3v3h-3zM20 14v3M17 20h4M14 20v1"
+            {...stroke}
+          />
+        </>
+      )}
+    </Svg>
   )
 }
 
-function QrIcon() {
+// Acción secundaria con icono y texto.
+function QuickAction({
+  label,
+  icon,
+  onPress,
+  danger = false,
+  disabled = false,
+}) {
   return (
-    <View style={styles.qrIcon}>
-      <View style={[styles.qrSquare, styles.qr1]} />
-      <View style={[styles.qrSquare, styles.qr2]} />
-      <View style={[styles.qrSquare, styles.qr3]} />
-      <View style={[styles.qrSquare, styles.qr4]} />
-    </View>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.quickAction,
+        danger && styles.quickActionDanger,
+        disabled && styles.disabled,
+        pressed && styles.pressed,
+      ]}
+    >
+      <CardIcon type={icon} />
+
+      <Text style={styles.quickActionText}>
+        {label}
+      </Text>
+    </Pressable>
   )
 }
 
 function PetCard({
+  petId,
   name,
   photo,
   species,
@@ -57,79 +160,160 @@ function PetCard({
   age,
   onEdit,
   onQrPress,
+  onHistory,
+  onDelete,
+  deleting = false,
 }) {
   return (
     <View style={styles.card}>
-      <PawBackground />
+      <SoftBubbles />
 
-      {!!onEdit && (
-        <Pressable
-          onPress={onEdit}
-          accessibilityLabel="Editar mascota"
-          style={({ pressed }) => [
-            styles.editButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          <EditIcon />
-        </Pressable>
-      )}
-
-      <View style={styles.info}>
-        <View>
-          <Text style={styles.label}>
-            Nombre
+      {/* ENCABEZADO DIFERENTE AL CARNET DIGITAL */}
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Text style={styles.headerTitle}>
+            Mi mascota
           </Text>
 
-          <Text style={styles.value}>
-            {name}
-          </Text>
-        </View>
-
-        <View>
-          <Text style={styles.label}>
-            Raza
-          </Text>
-
-          <Text style={styles.value}>
-            {breed || species}
-          </Text>
-        </View>
-
-        <View>
-          <Text style={styles.label}>
-            Edad
-          </Text>
-
-          <Text style={styles.value}>
-            {age}
+          <Text style={styles.headerSubtitle}>
+            Información y cuidados
           </Text>
         </View>
 
         {!!onQrPress && (
           <Pressable
             onPress={onQrPress}
-            accessibilityLabel="Ver QR"
+            accessibilityRole="button"
+            accessibilityLabel="Abrir carnet QR"
             style={({ pressed }) => [
-              styles.qrButton,
+              styles.qrShortcut,
               pressed && styles.pressed,
             ]}
           >
-            <QrIcon />
+            <CardIcon
+              type="qr"
+              size={22}
+            />
           </Pressable>
         )}
       </View>
 
-      <View style={styles.photoContainer}>
-        {photo ? (
-          <Image
-            source={photo}
-            contentFit="cover"
-            style={styles.photo}
-          />
-        ) : (
-          <View style={styles.photoFallback} />
-        )}
+      {/* DATOS A LA IZQUIERDA Y FOTO A LA DERECHA */}
+      <View style={styles.petDetails}>
+        <View style={styles.infoColumn}>
+          <View style={styles.infoBlock}>
+            <Text style={styles.infoLabel}>
+              Nombre
+            </Text>
+
+            <Text
+              style={styles.infoValue}
+              numberOfLines={2}
+            >
+              {name}
+            </Text>
+          </View>
+
+          <View style={styles.infoBlock}>
+            <Text style={styles.infoLabel}>
+              Raza
+            </Text>
+
+            <Text
+              style={styles.infoValue}
+              numberOfLines={2}
+            >
+              {breed || species || 'No registrada'}
+            </Text>
+          </View>
+
+          <View style={styles.infoBlock}>
+            <Text style={styles.infoLabel}>
+              Edad
+            </Text>
+
+            <Text style={styles.infoValue}>
+              {age || 'No registrada'}
+            </Text>
+          </View>
+        </View>
+
+        {/* FOTO ORIGINAL DE LA MASCOTA */}
+        <View style={styles.photoContainer}>
+          {photo ? (
+            <Image
+              source={photo}
+              contentFit="cover"
+              style={styles.photo}
+            />
+          ) : (
+            <View style={styles.photoFallback}>
+              <Text style={styles.photoFallbackText}>
+                {species === 'Gato'
+                  ? '🐱'
+                  : species === 'Perro'
+                    ? '🐶'
+                    : '🐾'}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* CONSERVAMOS ESPECIE E ID PETPASS */}
+      <View style={styles.identityRow}>
+        <Text
+          style={styles.identityText}
+          numberOfLines={1}
+        >
+          {species || 'Mascota'}
+        </Text>
+
+        <Text
+          style={styles.identityText}
+          numberOfLines={1}
+        >
+          ID PetPass · PP-{petId}
+        </Text>
+      </View>
+
+      {/* ACCIÓN PRINCIPAL */}
+      <Pressable
+        onPress={onQrPress}
+        disabled={!onQrPress}
+        accessibilityRole="button"
+        accessibilityLabel="Ver carnet digital"
+        style={({ pressed }) => [
+          styles.primaryButton,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Text style={styles.primaryText}>
+          Ver carnet digital
+        </Text>
+      </Pressable>
+
+      {/* ACCIONES SECUNDARIAS CON ICONOS */}
+      <View style={styles.quickActions}>
+        <QuickAction
+          label="Historial"
+          icon="medical"
+          onPress={onHistory}
+        />
+
+        <QuickAction
+          label="Editar"
+          icon="edit"
+          onPress={onEdit}
+        />
+
+        <QuickAction
+          label="Eliminar"
+          icon="delete"
+          danger
+          disabled={deleting}
+          onPress={onDelete}
+        />
       </View>
     </View>
   )
@@ -138,239 +322,132 @@ function PetCard({
 const styles = StyleSheet.create({
   card: {
     position: 'relative',
-
     width: '100%',
-    maxWidth: 384,
-    minHeight: 300,
-
+    maxWidth: 440,
     alignSelf: 'center',
-
-    paddingTop: 24,
-    paddingRight: 22,
-    paddingBottom: 20,
-    paddingLeft: 24,
-
+    padding: 20,
+    borderRadius: 34,
     overflow: 'hidden',
-
-    borderRadius: 36,
-
     backgroundColor: colors.blue,
-
     ...shadows.card,
   },
 
-  paw: {
-    position: 'absolute',
-
-    top: -12,
-    right: -18,
-
-    width: 255,
-    height: 255,
-
-    opacity: 0.18,
+  // CÍRCULOS DECORATIVOS
+  bubbles: {
+    ...StyleSheet.absoluteFillObject,
   },
 
-  pawToe: {
+  bubble: {
     position: 'absolute',
-
-    width: 58,
-    height: 58,
-
-    borderRadius: radius.pill,
-
-    backgroundColor: colors.white,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
 
-  pawToeSmall: {
-    position: 'absolute',
-
-    width: 48,
-    height: 48,
-
-    borderRadius: radius.pill,
-
-    backgroundColor: colors.white,
-  },
-
-  pawToe1: {
+  bubbleOne: {
+    width: 95,
+    height: 95,
     top: 28,
-    left: 18,
+    right: 92,
   },
 
-  pawToe2: {
-    top: 4,
-    left: 91,
+  bubbleTwo: {
+    width: 76,
+    height: 76,
+    top: 96,
+    right: -20,
   },
 
-  pawToe3: {
-    top: 29,
-    right: 15,
+  bubbleThree: {
+    width: 126,
+    height: 126,
+    top: 176,
+    right: 20,
   },
 
-  pawToe4: {
-    top: 95,
-    right: -2,
+  bubbleFour: {
+    width: 70,
+    height: 70,
+    top: 210,
+    right: 176,
   },
 
-  pawPad: {
-    position: 'absolute',
-
-    left: 54,
-    top: 108,
-
-    width: 142,
-    height: 77,
-
-    borderRadius: 48,
-
-    backgroundColor: colors.white,
-
-    transform: [
-      {
-        rotate: '-2deg',
-      },
-    ],
+  // ENCABEZADO
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 22,
   },
 
-  editButton: {
-    position: 'absolute',
+  headerText: {
+    flex: 1,
+  },
 
-    top: 18,
-    right: 18,
+  headerTitle: {
+    color: colors.white,
+    fontFamily: fonts.displayBold,
+    fontSize: 25,
+    lineHeight: 30,
+  },
 
-    width: 44,
-    height: 44,
+  headerSubtitle: {
+    marginTop: 3,
+    color: 'rgba(255,255,255,0.88)',
+    fontFamily: fonts.body,
+    fontSize: 12,
+  },
 
+  qrShortcut: {
+    width: 43,
+    height: 43,
     alignItems: 'center',
     justifyContent: 'center',
-
     borderRadius: 14,
-
     backgroundColor: colors.primaryDark,
-
-    zIndex: 10,
-
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
   },
 
-  editSymbol: {
-    marginTop: -2,
-
-    color: colors.white,
-
-    fontFamily: fonts.bodyBold,
-    fontSize: 23,
-  },
-
-  info: {
-    position: 'relative',
-
-    width: '50%',
-
+  // NOMBRE, RAZA, EDAD Y FOTO
+  petDetails: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: 10,
-
-    zIndex: 5,
+    minHeight: 202,
   },
 
-  label: {
+  infoColumn: {
+    flex: 1,
+    minWidth: 0,
+    gap: 13,
+    paddingBottom: 4,
+  },
+
+  infoBlock: {
+    gap: 2,
+  },
+
+  infoLabel: {
     color: colors.white,
-
     fontFamily: fonts.displayBold,
-    fontSize: 21,
-
+    fontSize: 20,
     lineHeight: 24,
   },
 
-  value: {
+  infoValue: {
     color: 'rgba(255,255,255,0.95)',
-
     fontFamily: fonts.body,
-    fontSize: 14,
-  },
-
-  qrButton: {
-    width: 34,
-    height: 34,
-
-    marginTop: 8,
-
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-
-  qrIcon: {
-    position: 'relative',
-
-    width: 26,
-    height: 26,
-  },
-
-  qrSquare: {
-    position: 'absolute',
-
-    width: 10,
-    height: 10,
-
-    borderWidth: 2,
-    borderColor: colors.white,
-  },
-
-  qr1: {
-    top: 0,
-    left: 0,
-  },
-
-  qr2: {
-    top: 0,
-    right: 0,
-  },
-
-  qr3: {
-    bottom: 0,
-    left: 0,
-  },
-
-  qr4: {
-    right: 0,
-    bottom: 0,
+    fontSize: 15,
+    lineHeight: 20,
   },
 
   photoContainer: {
-    position: 'absolute',
-
-    right: 12,
-    bottom: 12,
-
-    width: 158,
-    height: 158,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
+    width: 132,
+    height: 132,
+    flexShrink: 0,
     overflow: 'hidden',
-
     borderRadius: radius.pill,
-
     backgroundColor: colors.yellowNav,
-
-    zIndex: 4,
-
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 14,
-    elevation: 4,
+    ...shadows.soft,
   },
 
   photo: {
@@ -379,20 +456,97 @@ const styles = StyleSheet.create({
   },
 
   photoFallback: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
 
-    backgroundColor: colors.text,
+  photoFallbackText: {
+    fontSize: 48,
+  },
+
+  // IDENTIFICACIÓN
+  identityRow: {
+    marginTop: 22,
+    marginBottom: 18,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.20)',
+  },
+
+  identityText: {
+    flexShrink: 1,
+    color: colors.white,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+  },
+
+  // VER CARNET DIGITAL
+  primaryButton: {
+    minHeight: 51,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryDark,
+    ...shadows.soft,
+  },
+
+  primaryText: {
+    color: colors.white,
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    textAlign: 'center',
+  },
+
+  // HISTORIAL, EDITAR Y ELIMINAR
+  quickActions: {
+    marginTop: 13,
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  quickAction: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 75,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+
+  quickActionDanger: {
+    backgroundColor: 'rgba(225,103,71,0.30)',
+  },
+
+  quickActionText: {
+    color: colors.white,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11.5,
+    textAlign: 'center',
   },
 
   pressed: {
-    opacity: 0.78,
-
+    opacity: 0.8,
     transform: [
-      {
-        scale: 0.95,
-      },
+      { scale: 0.97 },
     ],
+  },
+
+  disabled: {
+    opacity: 0.45,
   },
 })
 

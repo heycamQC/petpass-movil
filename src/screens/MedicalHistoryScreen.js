@@ -1,10 +1,22 @@
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+
 import { useFocusEffect } from '@react-navigation/native'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 
 import Button from '../components/Button'
 import FormField from '../components/FormField'
+import MedicalDateField from '../components/MedicalDateField'
 import MedicalRecordCard from '../components/MedicalRecordCard'
 import Message from '../components/Message'
 import ScreenContainer from '../components/ScreenContainer'
@@ -12,9 +24,16 @@ import ScreenContainer from '../components/ScreenContainer'
 import { API_URL } from '../config'
 import useApi from '../hooks/useApi'
 import { sendMedicalRequest } from '../utils/medicalApi'
-import { colors, fonts, radius, shadows, spacing } from '../theme'
 
-// Los tres tipos son exactamente los que acepta el backend de EC2.
+import {
+  colors,
+  fonts,
+  radius,
+  shadows,
+  spacing,
+} from '../theme'
+
+// Los tipos que acepta la API actual.
 const FILTERS = [
   { id: 'vaccine', label: 'Vacunas' },
   { id: 'deworming', label: 'Desparasitación' },
@@ -29,64 +48,111 @@ const EMPTY_FORM = {
   description: '',
 }
 
-// La API guarda fechas como 2026-11-22 (AAAA-MM-DD), no DD/MM/AAAA.
+// La API recibe fechas en formato AAAA-MM-DD.
 function isValidISODate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const [year, month, day] = value.split('-').map(Number)
-  const parsed = new Date(Date.UTC(year, month - 1, day))
-  return parsed.getUTCFullYear() === year &&
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false
+  }
+
+  const [year, month, day] =
+    value.split('-').map(Number)
+
+  const parsed = new Date(
+    Date.UTC(year, month - 1, day)
+  )
+
+  return (
+    parsed.getUTCFullYear() === year &&
     parsed.getUTCMonth() === month - 1 &&
     parsed.getUTCDate() === day
+  )
 }
 
-// Conserva la presentación visual anterior: DD/MM/AAAA dentro de la tarjeta.
+// Las tarjetas siguen mostrando DD/MM/AAAA.
 function displayDate(value) {
   if (!value) return ''
   if (!isValidISODate(value)) return String(value)
+
   const [year, month, day] = value.split('-')
+
   return `${day}/${month}/${year}`
 }
 
 function MedicalHistoryScreen({ navigation, route }) {
-  // PetsScreen y DigitalCardScreen deben pasar el ID real de SQLite.
   const petId = Number(route.params?.id)
-  const validPetId = Number.isInteger(petId) && petId > 0
-  const petName = route.params?.petName || `Mascota #${petId}`
-  const url = validPetId ? `${API_URL}/api/mascotas/${petId}/historial` : null
-  const { data, loading, error, refetch } = useApi(url)
 
-  const [activeFilter, setActiveFilter] = useState('vaccine')
-  const [medicalFormOpen, setMedicalFormOpen] = useState(false)
-  const [editingRecordId, setEditingRecordId] = useState(null)
-  const [formData, setFormData] = useState(EMPTY_FORM)
-  const [formError, setFormError] = useState('')
-  const [saving, setSaving] = useState(false)
+  const validPetId =
+    Number.isInteger(petId) && petId > 0
+
+  const petName =
+    route.params?.petName ||
+    `Mascota #${petId}`
+
+  const url = validPetId
+    ? `${API_URL}/api/mascotas/${petId}/historial`
+    : null
+
+  const {
+    data,
+    loading,
+    error,
+    refetch,
+  } = useApi(url)
+
+  const [activeFilter, setActiveFilter] =
+    useState('vaccine')
+
+  const [medicalFormOpen, setMedicalFormOpen] =
+    useState(false)
+
+  const [editingRecordId, setEditingRecordId] =
+    useState(null)
+
+  const [formData, setFormData] =
+    useState(EMPTY_FORM)
+
+  const [formError, setFormError] =
+    useState('')
+
+  const [saving, setSaving] =
+    useState(false)
+
   const savingLock = useRef(false)
   const firstFocus = useRef(true)
 
-  // Al regresar a esta pantalla, volver a leer SQLite.
-  // En el primer foco, useApi ya hace el GET y no lo duplicamos.
-  useFocusEffect(useCallback(() => {
-    if (firstFocus.current) {
-      firstFocus.current = false
-    } else if (validPetId) {
-      refetch()
-    }
-  }, [validPetId, refetch]))
-
-  const records = Array.isArray(data) ? data : []
-  const visibleRecords = useMemo(() =>
-    records.filter((record) => record.type === activeFilter),
-    [records, activeFilter]
+  // Actualizar datos al volver a la pantalla.
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false
+      } else if (validPetId) {
+        refetch()
+      }
+    }, [validPetId, refetch])
   )
 
-  const activeFilterLabel = FILTERS.find(
-    (filter) => filter.id === activeFilter
-  )?.label || ''
+  const records = Array.isArray(data) ? data : []
+
+  const visibleRecords = useMemo(
+    () =>
+      records.filter(
+        (record) => record.type === activeFilter
+      ),
+    [data, activeFilter]
+  )
+
+  const activeFilterLabel =
+    FILTERS.find(
+      (filter) => filter.id === activeFilter
+    )?.label || ''
 
   function handleChange(field) {
     return (value) => {
-      setFormData((current) => ({ ...current, [field]: value }))
+      setFormData((current) => ({
+        ...current,
+        [field]: value,
+      }))
+
       setFormError('')
     }
   }
@@ -100,12 +166,14 @@ function MedicalHistoryScreen({ navigation, route }) {
 
   function handleFilterChange(type) {
     if (saving) return
+
     setActiveFilter(type)
-    resetForm() // Nunca editar accidentalmente con un filtro distinto.
+    resetForm()
   }
 
   function handleNewRecord() {
     if (saving) return
+
     setEditingRecordId(null)
     setFormData(EMPTY_FORM)
     setFormError('')
@@ -114,8 +182,12 @@ function MedicalHistoryScreen({ navigation, route }) {
 
   function handleEdit(record) {
     if (saving) return
+
     setActiveFilter(record.type)
     setEditingRecordId(record.id)
+
+    // Los valores llegan de SQLite en formato ISO.
+    // El calendario reconoce estos valores.
     setFormData({
       title: record.title || '',
       date: record.date || '',
@@ -123,6 +195,7 @@ function MedicalHistoryScreen({ navigation, route }) {
       place: record.place || '',
       description: record.description || '',
     })
+
     setFormError('')
     setMedicalFormOpen(true)
   }
@@ -140,25 +213,29 @@ function MedicalHistoryScreen({ navigation, route }) {
     }
 
     if (!date) {
-      setFormError('La fecha es obligatoria.')
+      setFormError('Selecciona la fecha del registro.')
       return
     }
 
     if (!isValidISODate(date)) {
       setFormError(
-        'Usa una fecha real con formato AAAA-MM-DD. Ejemplo: 2026-11-22.'
+        'Selecciona una fecha válida en el calendario.'
       )
       return
     }
 
-    if (nextDate && !isValidISODate(nextDate)) {
+    if (
+      nextDate &&
+      !isValidISODate(nextDate)
+    ) {
       setFormError(
-        'La próxima fecha debe tener formato AAAA-MM-DD o quedar vacía.'
+        'Selecciona una próxima fecha válida.'
       )
       return
     }
 
-    // Los nombres de campos coinciden con medicalRecords.controller.js.
+    // Payload original de la API.
+    // date y nextDate permanecen en formato AAAA-MM-DD.
     const payload = {
       type: activeFilter,
       title,
@@ -169,6 +246,7 @@ function MedicalHistoryScreen({ navigation, route }) {
     }
 
     const editing = editingRecordId !== null
+
     const path = editing
       ? `/api/historial/${editingRecordId}`
       : `/api/mascotas/${petId}/historial`
@@ -183,10 +261,14 @@ function MedicalHistoryScreen({ navigation, route }) {
         editing ? 'PUT' : 'POST',
         payload
       )
+
       resetForm()
-      refetch() // El registro recién guardado se lee desde la API.
+      refetch()
     } catch (requestError) {
-      setFormError(requestError.message) // Conserva el formulario si falla.
+      setFormError(
+        requestError.message ||
+        'No se pudo guardar el registro.'
+      )
     } finally {
       savingLock.current = false
       setSaving(false)
@@ -196,7 +278,9 @@ function MedicalHistoryScreen({ navigation, route }) {
   if (!validPetId) {
     return (
       <ScreenContainer>
-        <Message error="No se recibió un ID válido de mascota." />
+        <Message
+          error="No se recibió un ID válido de mascota."
+        />
 
         <Button
           variant="secondary"
@@ -208,7 +292,11 @@ function MedicalHistoryScreen({ navigation, route }) {
     )
   }
 
-  if (loading || error || !Array.isArray(data)) {
+  if (
+    loading ||
+    error ||
+    !Array.isArray(data)
+  ) {
     return (
       <ScreenContainer>
         <View style={styles.heading}>
@@ -225,8 +313,9 @@ function MedicalHistoryScreen({ navigation, route }) {
           loading={loading}
           error={
             error ||
-            (!loading &&
-              'La API no devolvió una lista válida de registros.')
+            (!loading
+              ? 'La API no devolvió una lista válida de registros.'
+              : '')
           }
         />
 
@@ -253,6 +342,7 @@ function MedicalHistoryScreen({ navigation, route }) {
 
   return (
     <ScreenContainer>
+      {/* Encabezado */}
       <View style={styles.heading}>
         <Text style={styles.title}>
           Historial Médico
@@ -263,8 +353,7 @@ function MedicalHistoryScreen({ navigation, route }) {
         </Text>
       </View>
 
-      {/* FILTROS EN UNA SOLA FILA */}
-
+      {/* Filtros originales */}
       <View style={styles.filters}>
         {FILTERS.map((filter) => {
           const active = activeFilter === filter.id
@@ -272,15 +361,20 @@ function MedicalHistoryScreen({ navigation, route }) {
           return (
             <Pressable
               key={filter.id}
-              onPress={() => handleFilterChange(filter.id)}
+              onPress={() =>
+                handleFilterChange(filter.id)
+              }
               disabled={saving}
               accessibilityRole="button"
-              accessibilityState={{ selected: active }}
+              accessibilityState={{
+                selected: active,
+              }}
               style={({ pressed }) => [
                 styles.filterButton,
                 filter.id === 'deworming' &&
                   styles.filterButtonWide,
-                active && styles.filterButtonActive,
+                active &&
+                  styles.filterButtonActive,
                 pressed && styles.pressed,
               ]}
             >
@@ -290,7 +384,8 @@ function MedicalHistoryScreen({ navigation, route }) {
                 minimumFontScale={0.75}
                 style={[
                   styles.filterText,
-                  active && styles.filterTextActive,
+                  active &&
+                    styles.filterTextActive,
                 ]}
               >
                 {filter.label}
@@ -300,6 +395,7 @@ function MedicalHistoryScreen({ navigation, route }) {
         })}
       </View>
 
+      {/* Título de la categoría */}
       <View style={styles.sectionHeader}>
         <View>
           <Text style={styles.sectionTitle}>
@@ -315,16 +411,20 @@ function MedicalHistoryScreen({ navigation, route }) {
         <Pressable
           onPress={handleNewRecord}
           disabled={saving}
+          accessibilityRole="button"
           accessibilityLabel="Agregar registro médico"
           style={({ pressed }) => [
             styles.addButton,
             pressed && styles.pressed,
           ]}
         >
-          <Text style={styles.addSymbol}>+</Text>
+          <Text style={styles.addSymbol}>
+            +
+          </Text>
         </Pressable>
       </View>
 
+      {/* Formulario de nuevo registro / edición */}
       {medicalFormOpen && (
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>
@@ -345,18 +445,23 @@ function MedicalHistoryScreen({ navigation, route }) {
               placeholder="Ej. Vacuna antirrábica"
             />
 
-            <FormField
-              label="Fecha * (AAAA-MM-DD)"
+            {/* NUEVO CALENDARIO OBLIGATORIO */}
+            <MedicalDateField
+              label="Fecha del registro *"
               value={formData.date}
-              onChangeText={handleChange('date')}
-              placeholder="Ej. 2026-11-22"
+              onChange={handleChange('date')}
+              disabled={saving}
+              onBlue
             />
 
-            <FormField
-              label="Próxima fecha (AAAA-MM-DD)"
+            {/* NUEVO CALENDARIO OPCIONAL */}
+            <MedicalDateField
+              label="Próxima fecha (opcional)"
               value={formData.nextDate}
-              onChangeText={handleChange('nextDate')}
-              placeholder="Opcional: 2027-11-22"
+              onChange={handleChange('nextDate')}
+              optional
+              disabled={saving}
+              onBlue
             />
 
             <FormField
@@ -404,6 +509,7 @@ function MedicalHistoryScreen({ navigation, route }) {
         </View>
       )}
 
+      {/* Registros existentes */}
       {!medicalFormOpen && (
         <View style={styles.records}>
           {visibleRecords.length > 0 ? (
@@ -460,8 +566,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 14,
   },
-
-  // FILTROS EN UNA SOLA FILA
 
   filters: {
     width: '100%',
