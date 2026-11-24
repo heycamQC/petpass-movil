@@ -69,26 +69,33 @@ try {
   Assert-Result ($created.StatusCode -eq 201 -and $created.Data.id -gt 0) 'POST mascota = 201'
   $createdId = [int]$created.Data.id
 
+
   $readPet = Invoke-PetPass 'GET' "/api/mascotas/$createdId"
   Assert-Result ($readPet.StatusCode -eq 200 -and $readPet.Data.name -eq $uniqueName) 'GET mascota creada = 200'
 
-  $updated = Invoke-PetPass 'PUT' "/api/mascotas/$createdId" @{ name="$uniqueName`_EDITADA"; species='Perro'; age='3' }
-  Assert-Result ($updated.StatusCode -eq 200 -and$updated.Data.age -eq '3') 'PUT mascota = 200'
+  $updated = Invoke-PetPass 'PUT' "/api/mascotas/$createdId" @{ name="${uniqueName}_EDITADA"; species='Perro'; age='3' }
+  Assert-Result ($updated.StatusCode -eq 200 -and $updated.Data.age -eq '3') 'PUT mascota = 200'
 
   $history = Invoke-PetPass 'GET' "/api/mascotas/$createdId/historial"
-  Assert-Result ($history.StatusCode -eq 200) 'GET historial de mascota = 200'$date = Get-Date -Format 'yyyy-MM-dd'
+  Assert-Result ($history.StatusCode -eq 200) 'GET historial de mascota = 200'
+
+  $date = Get-Date -Format 'yyyy-MM-dd'
+
   $record = Invoke-PetPass 'POST' "/api/mascotas/$createdId/historial" @{type='vaccine'; title='QA vacuna temporal'; date=$date; description='Solo prueba local'}
-  Assert-Result ($record.StatusCode -eq 201 -and $record.Data.petId -eq$createdId) 'POST historial = 201'
+  Assert-Result ($record.StatusCode -eq 201 -and $record.Data.petId -eq $createdId) 'POST historial = 201'
+
   $recordId = [int]$record.Data.id
   $recordEdited = Invoke-PetPass 'PUT' "/api/historial/$recordId" @{type='consultation'; title='QA consulta temporal'; date=$date; description='Prueba'}
-  Assert-Result ($recordEdited.StatusCode -eq 200 -and$recordEdited.Data.title -eq 'QA consulta temporal') 'PUT historial = 200'
+  Assert-Result ($recordEdited.StatusCode -eq 200 -and $recordEdited.Data.title -eq 'QA consulta temporal') 'PUT historial = 200'
 
   $afterMedical = Invoke-PetPass 'GET' "/api/mascotas/$createdId/historial"
   Assert-Result ($afterMedical.StatusCode -eq 200 -and @($afterMedical.Data).Count -ge 1) 'Persistencia médica comprobada'
+
   Write-Host "QA de escritura terminada; limpiando ID temporal $createdId."
+
 }
 finally {
-  if ($null -ne$createdId) {
+  if ($null -ne $createdId) {
     try {
       $deleted = Invoke-PetPass 'DELETE' "/api/mascotas/$createdId"
       Assert-Result ($deleted.StatusCode -eq 204) 'DELETE mascota QA = 204 (sin cuerpo)'
