@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "petpass-movil",
+    "name": "PetPass La Paz",
     "slug": "petpass-movil",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,6 +10,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.petpasslapaz.movil",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -22,7 +24,40 @@
     },
     "plugins": [
       "expo-font",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "PetPass necesita acceder a las fotos que elijas para el perfil de tu mascota.",
+          "cameraPermission": "PetPass necesita usar la cámara para fotografiar a tu mascota.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PetPass necesita usar la cámara para escanear carnets QR.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "PetPass usa tu ubicación únicamente cuando eliges mostrar dónde estás en el mapa.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ]
   }
 }
